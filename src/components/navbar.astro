@@ -1,0 +1,111 @@
+<nav class="flex-column" aria-label="Menú principal">
+  <i class="bi bi-list open-nav" aria-label="Abrir menú"></i>
+
+  <div class="flex-column" id="overlay">
+    <a href="/">Home</a>
+    <a href="/seccion2">SECCION2</a>
+    <a href="/seccion3">SECCION3</a>
+    <i class="bi bi-x-lg close-nav" aria-label="Cerrar menú"></i>
+  </div>
+</nav>
+
+<style>
+  .open-nav {
+    font-size: 28px;
+    cursor: pointer;
+  }
+
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    gap: 7%;
+    background: var(--clr-white);
+    z-index: 100;
+  }
+  #overlay.new-nav {
+    display: flex;
+  }
+
+  .close-nav {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 28px;
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 7px;
+    background: var(--clr-dark);
+    color: var(--clr-white);
+  }
+
+  #overlay a {
+    font-size: 18px;
+    background: #fff;
+    padding: 10px 17px;
+    border: 2px solid var(--clr-dark);
+    border-radius: 12px;
+    letter-spacing: 7px;
+    width: 210px;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--clr-dark);
+  }
+
+  /* Desktop: no overlay, enlaces inline, sin iconos */
+  @media (min-width: 700px) {
+    .open-nav,
+    .close-nav {
+      display: none;
+    }
+    #overlay {
+      display: flex;
+      position: relative;
+      inset: auto;
+      flex-direction: row;
+      width: auto;
+      height: auto;
+      gap: 7px;
+      backdrop-filter: none;
+      background: transparent;
+    }
+    #overlay a {
+      font-size: 14px;
+      border: none;
+      letter-spacing: 0;
+      width: auto;
+      transition: 0.2s ease;
+    }
+
+    #overlay a:hover {
+      background-color: var(--clr-dark);
+      color: #fff;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const overlay = document.getElementById("overlay");
+    const openBtn = document.querySelector(".open-nav");
+    const closeBtn = document.querySelector(".close-nav");
+
+    const open = () => {
+      if (overlay) {
+        overlay.style.display = "flex";
+      }
+    };
+
+    const close = () => {
+      if (overlay) overlay.style.display = "none";
+    };
+
+    openBtn?.addEventListener("click", open);
+    closeBtn?.addEventListener("click", close);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+  });
+</script>
