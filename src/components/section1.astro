@@ -1,17 +1,43 @@
 <section>
-  <h2>SECTION1</h2>
-  <p>
-    Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nisi ipsa fugit,
-    fuga minus odit vero non explicabo! Fugit necessitatibus quia, soluta quas
-    non totam delectus magni mollitia dolores, voluptatem porro!Lorem ipsum
-    dolor sit amet, consectetur adipisicing elit. Nisi ipsa fugit, fuga minus
-    odit vero non explicabo! Fugit necessitatibus quia, soluta quas non totam
-    delectus magni mollitia dolores, voluptatem porro!
-  </p>
+  <div class="flex-row">
+    <img src="/img/banner.jpg" alt="banner" />
+
+    <div class="nosotros">
+      <h2>NOSOTROS:</h2>
+      <p>
+        Fabrica de yogurt 100% natural y artesanal con trozos de fruta, textura
+        cremosa y yogurt griego. Libre de químicos, conservantes, preservantes y
+        saborizantes artificiales. Todos nuestros envases son retornables ♻️.
+      </p>
+    </div>
+  </div>
 </section>
 
 <style>
   p {
-    text-align: justify;
+    text-align: left;
+  }
+
+  img {
+    display: none;
+  }
+
+  div.flex-row {
+    flex-wrap: wrap;
+  }
+
+  @media (min-width: 768px) {
+    .nosotros {
+      width: 30%;
+    }
+
+    img {
+      display: block;
+      width: 300px;
+    }
+
+    div.flex-row {
+      gap: 40px;
+    }
   }
 </style>

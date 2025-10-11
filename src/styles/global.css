@@ -11,11 +11,16 @@
 
 }
 
+@font-face {
+  font-family: "Lemon/Milk";
+  src: url("/Font/LEMONMILK-Light.otf") format("truetype");
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: Poppins, sans-serif;
+  font-family: "Lemon/Milk" !important;
 }
 
 html {
@@ -59,13 +64,14 @@ h2,
 h3,
 h4,
 h5 {
-  font-weight: 200;
+  font-weight: bold;
   letter-spacing: 2px;
   padding-left: 2px;
 }
 
 p {
   color: var(--clr-gray);
+  font-size: 12px;
 }
 
 /* FLEX ROW Y FLEX COLUMN */
