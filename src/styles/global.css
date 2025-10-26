@@ -105,7 +105,8 @@ footer>* {
   max-width: 900px;
 }
 
-a.boton {
+a.boton,
+.button1 {
   padding: 10px 14px;
   border-radius: 12px;
   font-weight: 700;
@@ -113,6 +114,7 @@ a.boton {
   border: none;
   letter-spacing: 2px;
   padding-left: 16px;
+  cursor: pointer;
 }
 
 
