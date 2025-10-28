@@ -1,5 +1,5 @@
 ---
-
+import Product_card from "../components/product_card.astro";
 ---
 
 <!-- PRODUCTS + CART -->
@@ -20,7 +20,9 @@
   </div>
 
   <div class="main-listProduct flex-column">
-    <div class="listProduct flex-row"></div>
+    <div class="listProduct flex-row">
+      <!-- <Product_card /> -->
+    </div>
   </div>
 
   <div class="cartTab flex-column">
@@ -108,14 +110,14 @@
   #products .listProduct .item {
     width: 100%;
     max-width: 280px;
-    height: auto;
+    height: 400px;
     align-items: baseline;
     flex: 0 0 auto;
     justify-content: space-around;
     text-align: left;
     background-color: #ffffff;
     border-radius: 14px;
-    border: solid 1px #e3dede;
+    border: solid 1px #dcdcdc;
     padding: 14px;
     cursor: pointer;
   }
@@ -136,14 +138,19 @@
     border-radius: 7px;
   }
   #products .listProduct .item .product-name {
-    font-size: 14px;
+    font-size: 11px;
     color: var(--clr-dark);
     margin: 7px 0;
   }
   #products .listProduct .item .price {
     letter-spacing: 3px;
-    font-size: small;
+    font-size: 11px;
     margin-bottom: auto;
+  }
+
+  #products .listProduct .item button {
+    font-size: 11px;
+    border: solid 1px #dcdcdc;
   }
 
   /* CARRITO LATERAL */
@@ -179,12 +186,15 @@
     color: var(--clr-dark);
     width: 100%;
     height: 70px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
-    background-color: var(--clr-gray);
+    border: none;
+    border-top: solid 1px #dcdcdc;
+    cursor: pointer;
+    /* background-color: #dcdcdc; */
   }
   .cartTab button:hover {
-    background-color: var(--clr-white);
+    background-color: #dcdcdc;
   }
   .cartTab .listCart {
     overflow: auto;
@@ -398,7 +408,6 @@
   /* Ajuste simple en pantallas anchas */
   @media (min-width: 700px) {
     #products .listProduct .item {
-      height: 454px;
     }
     #products .listProduct .item img {
       /* height: 350px; */

@@ -1,0 +1,12 @@
+---
+const { id, name, price, image, details } = Astro.props;
+---
+
+<div class="item flex-column" data-id={id}>
+  <img src={image} alt={name} />
+  <h5 class="product-name">{name}</h5>
+  <h5 class="price">${price.toFixed(3)}</h5>
+  <div class="flex-row">
+    <button class="addCart button1">Agregar</button>
+  </div>
+</div>

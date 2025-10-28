@@ -15,8 +15,9 @@
             "price": 200000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nUt enim ad minim veniam.\nQuis nostrud exercitation ullamco.",
             "images": [
-                "/IMG/PRODUCTS/ACCESORIOS-2A.jpg",
-                "/IMG/PRODUCTS/ACCESORIOS-2B.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         },
         {
@@ -24,7 +25,9 @@
             "price": 220000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nExcepteur sint occaecat cupidatat non proident.",
             "images": [
-                "/IMG/PRODUCTS/ACCESORIOS-3A.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         }
     ],
@@ -34,8 +37,9 @@
             "price": 120000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nAliquam at porttitor sem.\nAliquam erat volutpat.",
             "images": [
-                "/IMG/PRODUCTS/HOGAR-1A.jpg",
-                "/IMG/PRODUCTS/HOGAR-1B.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         },
         {
@@ -43,9 +47,9 @@
             "price": 180000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nCras ultricies ligula sed magna dictum porta.",
             "images": [
-                "/IMG/PRODUCTS/HOGAR-2A.jpg",
-                "/IMG/PRODUCTS/HOGAR-2B.jpg",
-                "/IMG/PRODUCTS/HOGAR-2C.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         },
         {
@@ -53,7 +57,9 @@
             "price": 110000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nVivamus suscipit tortor eget felis porttitor volutpat.",
             "images": [
-                "/IMG/PRODUCTS/HOGAR-3A.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         }
     ],
@@ -63,8 +69,9 @@
             "price": 200000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nPellentesque in ipsum id orci porta dapibus.",
             "images": [
-                "/IMG/PRODUCTS/GADGETS-1A.jpg",
-                "/IMG/PRODUCTS/GADGETS-1B.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         },
         {
@@ -72,9 +79,9 @@
             "price": 200000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nCurabitur non nulla sit amet nisl tempus convallis quis ac lectus.",
             "images": [
-                "/IMG/PRODUCTS/GADGETS-2A.jpg",
-                "/IMG/PRODUCTS/GADGETS-2B.jpg",
-                "/IMG/PRODUCTS/GADGETS-2C.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         },
         {
@@ -82,7 +89,9 @@
             "price": 80000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nDonec sollicitudin molestie malesuada.",
             "images": [
-                "/IMG/PRODUCTS/GADGETS-3A.jpg"
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg",
+                "/img/products/pro1.jpg"
             ]
         }
     ]
