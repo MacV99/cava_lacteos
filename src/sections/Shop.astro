@@ -1,59 +1,40 @@
 ---
 import Product_card from "../components/product_card.astro";
+import ViewProduct from "../components/view_product.astro";
+import CartTab from "../components/cart_tab.astro";
+import CategorySearch from "../components/category_search.astro";
 ---
 
 <!-- PRODUCTS + CART -->
 <section id="products" class="flex-column">
   <h2>NUESTROS PRODUCTOS</h2>
 
-  <div class="category-buttons flex-row" id="category-buttons"></div>
+  <!-- Selector de categoría + buscador -->
+  <CategorySearch />
 
-  <div class="search-bar">
-    <input type="text" id="search-input" placeholder="Buscar productos..." />
-  </div>
-
+  <!-- Icono carrito -->
   <div class="icon-cart">
     <i class="bi bi-cart flex-row"></i>
     <span>0</span>
   </div>
 
+  <!-- Grid de productos -->
   <div class="main-listProduct flex-column">
     <div class="listProduct flex-row"></div>
   </div>
 
-  <div class="cartTab flex-column">
-    <h2>Tu Carrito</h2>
-    <div class="listCart flex-column"></div>
-    <div class="btn">
-      <button class="close">Cerrar</button>
-      <button class="clean">Limpiar</button>
-      <button class="buy">Confirmar <br /> Orden</button>
-    </div>
-  </div>
+  <!-- Carrito lateral -->
+  <CartTab />
 </section>
 
-<!-- VISTAS -->
+<!-- Vista de producto + modal -->
+<ViewProduct />
 
-<!-- VISTA PRODUCT DETAILS -->
-<section id="v-product" class="flex-column">
-  <i class="bi bi-x-lg close-v-product"></i>
-  <div class="images flex-row"></div>
-  <h2 class="name">NAME PRODUCT</h2>
-  <p class="details">DETAILS PRODUCT</p>
-  <button class="addCart button1">Agregar</button>
-</section>
-
-<!-- IMAGEN GRANDE DE PRODUCTO -->
-<div id="image-modal" class="flex-column" style="display:none;">
-  <span class="close-modal">×</span>
-  <img src="" alt="Imagen ampliada" />
-</div>
-
-<!-- Inyecta la PLANTILLA del card una sola vez -->
+<!-- Plantilla de tarjeta de producto -->
 <Product_card />
 
 <style is:inline>
-  /* ICONO CARRITO */
+  /* ICONO CARRITO (global porque lo manipulamos con JS) */
   .icon-cart {
     position: fixed;
     bottom: 14px;
@@ -88,7 +69,7 @@ import Product_card from "../components/product_card.astro";
     padding-top: 1px;
   }
 
-  /* LISTA DE PRODUCTOS (OJO: estilos del .item están en el componente) */
+  /* LISTA DE PRODUCTOS (los estilos del .item viven en product_card.astro) */
   #products {
     display: flex;
     gap: 7px;
@@ -103,166 +84,6 @@ import Product_card from "../components/product_card.astro";
     justify-content: space-evenly;
     flex-wrap: wrap;
     row-gap: 21px;
-  }
-
-  /* CARRITO LATERAL */
-  .cartTab {
-    width: 400px;
-    background-color: var(--clr-white);
-    color: var(--clr-dark);
-    position: fixed;
-    top: 0;
-    right: -410px;
-    bottom: 0;
-    transition: 0.3s ease-in-out;
-    box-shadow: 0 0 14px rgba(0, 0, 0, 0.7);
-    z-index: 111;
-  }
-  .showCart .cartTab {
-    right: 0;
-  }
-  .cartTab > h2 {
-    padding: 15px 14px 5px;
-    font-size: 28px;
-    color: var(--clr-dark);
-    letter-spacing: 3px;
-    border-bottom: solid 1px;
-    text-transform: uppercase;
-  }
-  .cartTab .btn {
-    display: flex;
-    margin-top: auto;
-    width: 100%;
-  }
-  .cartTab button {
-    color: var(--clr-dark);
-    width: 100%;
-    height: 70px;
-    font-size: 12px;
-    font-weight: 700;
-    border: none;
-    border-top: solid 1px #dcdcdc;
-    cursor: pointer;
-  }
-  .cartTab button:hover {
-    background-color: #dcdcdc;
-  }
-  .cartTab .listCart {
-    overflow: auto;
-    width: 100%;
-  }
-  .cartTab .listCart .item {
-    text-align: center;
-    align-items: center;
-    justify-content: space-between;
-    background-color: #f5f5f5;
-    font-size: 13px;
-    width: 100%;
-    padding: 0 14px;
-  }
-  .cartTab .listCart .item div.image {
-    width: 19%;
-    height: 70px;
-  }
-  .cartTab .listCart .item img {
-    height: 50px;
-    padding: 7px;
-  }
-  .cartTab .listCart .item .name {
-    width: 29%;
-  }
-  .cartTab .listCart .item .totalPrice {
-    width: 24%;
-  }
-  .cartTab .listCart .quantity {
-    border-radius: 3px;
-    border: solid 1px var(--clr-dark);
-    width: 24%;
-    justify-content: space-between;
-  }
-  .cartTab .listCart .quantity span {
-    width: 25px;
-    height: 25px;
-    border-radius: 2px;
-    color: var(--clr-dark);
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    background-color: var(--clr-dark);
-  }
-  .cartTab .listCart .quantity span .bi {
-    color: var(--clr-white);
-    font-size: 16px;
-  }
-  .cartTab .listCart .quantity span:nth-child(2) {
-    background-color: transparent;
-    color: var(--clr-dark);
-    cursor: auto;
-    width: 23px;
-  }
-  .cartTab .listCart .item:nth-child(even) {
-    background-color: #ececec;
-  }
-  .cartTab .listCart::-webkit-scrollbar {
-    width: 0;
-  }
-  .cartTab .cart-total {
-    padding: 7px;
-    font-size: 21px;
-    margin-top: 7px;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-  }
-
-  /* VISTA PRODUCTO */
-  #v-product {
-    display: none;
-    position: fixed;
-    width: 100%;
-    top: 0;
-    bottom: 0;
-    background-color: var(--clr-white);
-    justify-content: flex-start;
-    align-items: baseline;
-    padding: 14px;
-    gap: 7px;
-    overflow-x: auto;
-    max-width: 520px;
-    box-shadow: 0 0 14px rgba(0, 0, 0, 0.7);
-    text-align: left;
-    z-index: 100;
-  }
-  #v-product .close-v-product {
-    position: absolute;
-    top: 0;
-    right: 0;
-    margin: 28px;
-    font-size: 21px;
-    color: var(--clr-white);
-    cursor: pointer;
-    border-radius: 3px;
-    padding: 7px;
-    background-color: var(--clr-dark);
-  }
-  #v-product .images {
-    display: flex;
-    justify-content: flex-start;
-    overflow-x: auto;
-    width: 100%;
-    min-height: 350px;
-    gap: 10px;
-    scroll-snap-type: x mandatory;
-    padding: 0 70px;
-    overflow-y: hidden;
-  }
-  #v-product .images img {
-    background-color: var(--clr-gray);
-    width: 300px;
-    height: 350px;
-    cursor: pointer;
-    object-fit: cover;
-    scroll-snap-align: center;
-    flex: 0 0 auto;
   }
 
   /* ANIMACIÓN ICONO CARRITO */
@@ -286,114 +107,52 @@ import Product_card from "../components/product_card.astro";
   .icon-cart.animate-cart {
     animation: shake 0.3s ease-in-out;
   }
-
-  /* MODAL IMAGEN */
-  #image-modal {
-    position: fixed;
-    z-index: 9999;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-  }
-  #image-modal img {
-    max-width: 90%;
-    max-height: 80%;
-    border-radius: 5px;
-  }
-  #image-modal .close-modal {
-    position: absolute;
-    top: 25px;
-    right: 35px;
-    color: #fff;
-    font-size: 34px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  /* SELECTOR DE CATEGORÍA + BUSCADOR */
-  .category-buttons {
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 14px 0;
-  }
-  .category-buttons button {
-    padding: 7px 14px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: 0.2s ease;
-    text-transform: uppercase;
-    border-radius: 7px;
-    border: none;
-    background-color: #fff;
-  }
-  .category-buttons button.active,
-  .category-buttons button:hover {
-    background-color: var(--clr-dark);
-    color: var(--clr-white);
-  }
-  .search-bar {
-    display: flex;
-    justify-content: center;
-    width: 70%;
-    max-width: 350px;
-  }
-  .search-bar input {
-    width: 100%;
-    max-width: 420px;
-    padding: 10px 14px;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    outline: none;
-  }
 </style>
 
 <script is:inline>
+  // Refs UI
   const $categoryButtons = document.getElementById("category-buttons");
-  let selectedCategory = "TODOS";
-  let allProductsByCategory = {};
-
   const $searchInput = document.getElementById("search-input");
-  let searchTerm = "";
-
-  let currentProductIndex = null;
-
-  const $closeViewProduct = document.querySelector(".close-v-product");
-  const $viewProduct = document.getElementById("v-product");
-
   const listProductHTML = document.querySelector(".listProduct");
   const listCartHTML = document.querySelector(".listCart");
+
   const iconCart = document.querySelector(".icon-cart");
   const iconCartSpan = document.querySelector(".icon-cart span");
   const body = document.querySelector("body");
+  const $viewProduct = document.getElementById("v-product");
+
   const closeCart = document.querySelector(".close");
   const $cleanCart = document.querySelector(".clean");
   const $btnBuy = document.querySelector(".buy");
 
+  // Estado
+  let selectedCategory = "TODOS";
+  let allProductsByCategory = {};
   let products = [];
   let cart = [];
+  let searchTerm = "";
+  let currentProductIndex = null;
 
+  // Utils
   const cleanImagePath = (path) => (path ? path.trim() : "");
+  const normalizeText = (text) =>
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
-  $closeViewProduct.addEventListener(
-    "click",
-    () => ($viewProduct.style.display = "none"),
-  );
+  // Carrito: abrir/cerrar
   iconCart.addEventListener("click", () => body.classList.toggle("showCart"));
   closeCart.addEventListener("click", () => body.classList.toggle("showCart"));
 
+  // Carrito: limpiar
   $cleanCart.addEventListener("click", () => {
     cart = [];
     addCartToHTML();
     localStorage.removeItem("cart");
   });
 
+  // Carrito: comprar (WhatsApp)
   $btnBuy.addEventListener("click", () => {
     const totalEl = document.querySelector(".cart-total strong");
     const total = totalEl ? totalEl.innerText : "Total: $0.000";
@@ -409,6 +168,7 @@ import Product_card from "../components/product_card.astro";
     window.open(urlWhatsApp, "_blank");
   });
 
+  // Render: botones de categoría
   const renderCategoryButtons = () => {
     $categoryButtons.innerHTML = "";
     const categories = ["TODOS", ...Object.keys(allProductsByCategory)];
@@ -427,13 +187,7 @@ import Product_card from "../components/product_card.astro";
     });
   };
 
-  const normalizeText = (text) =>
-    text
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-  // ======== SOLO CAMBIÓ ESTA PARTE: generación de cards clonando el template ========
+  // Render: tarjetas de productos clonando el template del componente
   const addDataToHTML = () => {
     listProductHTML.innerHTML = "";
 
@@ -464,6 +218,7 @@ import Product_card from "../components/product_card.astro";
         node.querySelector(".price").textContent =
           `$${product.price.toFixed(3)}`;
 
+        // Abrir vista de producto
         node.addEventListener("click", (e) => {
           if (e.target.closest(".addCart")) return;
 
@@ -489,13 +244,14 @@ import Product_card from "../components/product_card.astro";
       listProductHTML.appendChild(fragment);
     }
   };
-  // ===================================================================================
 
+  // Buscador
   $searchInput?.addEventListener("input", (e) => {
     searchTerm = e.target.value;
     addDataToHTML();
   });
 
+  // Click en "Agregar" desde la card
   listProductHTML.addEventListener("click", (event) => {
     if (event.target.classList.contains("addCart")) {
       const product_id = event.target.closest(".item").dataset.id;
@@ -504,15 +260,17 @@ import Product_card from "../components/product_card.astro";
     }
   });
 
+  // Click en "Agregar" dentro de la vista de producto
   document
     .querySelector("#v-product .addCart")
-    .addEventListener("click", () => {
+    ?.addEventListener("click", () => {
       if (currentProductIndex !== null) {
         addToCart(currentProductIndex);
         animateCartIcon();
       }
     });
 
+  // Carrito: lógica
   const addToCart = (product_id) => {
     const index = cart.findIndex((item) => item.product_id == product_id);
     if (index === -1) {
@@ -546,16 +304,16 @@ import Product_card from "../components/product_card.astro";
       newItem.classList.add("item", "flex-row");
       newItem.dataset.id = item.product_id;
       newItem.innerHTML = `
-      <div class="image flex-row">
-        <img src=".${cleanImagePath(product.images[0])}" alt="${product.name}">
-      </div>
-      <div class="name">${product.name}</div>
-      <div class="totalPrice">$${itemTotal.toFixed(3)}</div>
-      <div class="quantity flex-row">
-        <span><i class="bi bi-dash minus"></i></span>
-        <span>${item.quantity}</span>
-        <span><i class="bi bi-plus plus"></i></span>
-      </div>`;
+        <div class="image flex-row">
+          <img src=".${cleanImagePath(product.images[0])}" alt="${product.name}">
+        </div>
+        <div class="name">${product.name}</div>
+        <div class="totalPrice">$${itemTotal.toFixed(3)}</div>
+        <div class="quantity flex-row">
+          <span><i class="bi bi-dash minus"></i></span>
+          <span>${item.quantity}</span>
+          <span><i class="bi bi-plus plus"></i></span>
+        </div>`;
       fragment.appendChild(newItem);
     });
 
@@ -568,6 +326,7 @@ import Product_card from "../components/product_card.astro";
     iconCartSpan.innerText = totalQuantity;
   };
 
+  // Cambiar cantidad en carrito
   listCartHTML.addEventListener("click", (event) => {
     const isMinus = event.target.classList.contains("minus");
     const isPlus = event.target.classList.contains("plus");
@@ -588,11 +347,13 @@ import Product_card from "../components/product_card.astro";
     addCartToMemory();
   };
 
+  // Animación del icono carrito
   const animateCartIcon = () => {
     iconCart.classList.add("animate-cart");
     setTimeout(() => iconCart.classList.remove("animate-cart"), 300);
   };
 
+  // Init
   const initApp = () => {
     fetch("./JSON/products.json")
       .then((response) => response.json())
@@ -612,27 +373,4 @@ import Product_card from "../components/product_card.astro";
   };
 
   window.addEventListener("DOMContentLoaded", initApp);
-
-  // Modal de imagen (vista de producto)
-  const $imgModal = document.getElementById("image-modal");
-  const $modalImg = $imgModal?.querySelector("img");
-  const $closeModal = $imgModal?.querySelector(".close-modal");
-
-  $viewProduct.querySelector(".images").addEventListener("click", (e) => {
-    if (e.target.tagName === "IMG") {
-      $modalImg.src = e.target.src;
-      $imgModal.style.display = "flex";
-    }
-  });
-
-  $closeModal?.addEventListener(
-    "click",
-    () => ($imgModal.style.display = "none"),
-  );
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") $imgModal.style.display = "none";
-  });
-  $imgModal?.addEventListener("click", (e) => {
-    if (e.target === $imgModal) $imgModal.style.display = "none";
-  });
 </script>

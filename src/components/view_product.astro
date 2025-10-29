@@ -1,0 +1,142 @@
+---
+/**
+ * Componente de vista de producto + modal de imagen.
+ * Contiene su HTML, CSS y JS (solo lo propio del componente).
+ */
+---
+
+<!-- VISTA PRODUCTO -->
+<section id="v-product" class="flex-column">
+  <i class="bi bi-x-lg close-v-product"></i>
+  <div class="images flex-row"></div>
+  <h2 class="name">NAME PRODUCT</h2>
+  <p class="details">DETAILS PRODUCT</p>
+  <button class="addCart button1">Agregar</button>
+</section>
+
+<!-- MODAL IMAGEN GRANDE -->
+<div id="image-modal" class="flex-column" style="display:none;">
+  <span class="close-modal">×</span>
+  <img src="" alt="Imagen ampliada" />
+</div>
+
+<style is:inline>
+  /* VISTA PRODUCTO */
+  #v-product {
+    display: none;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    background-color: var(--clr-white);
+    justify-content: flex-start;
+    align-items: baseline;
+    padding: 14px;
+    gap: 7px;
+    overflow-x: auto;
+    max-width: 520px;
+    box-shadow: 0 0 14px rgba(0, 0, 0, 0.7);
+    text-align: left;
+    z-index: 100;
+  }
+  #v-product .close-v-product {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 28px;
+    font-size: 21px;
+    color: var(--clr-white);
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 7px;
+    background-color: var(--clr-dark);
+  }
+  #v-product .images {
+    display: flex;
+    justify-content: flex-start;
+    overflow-x: auto;
+    width: 100%;
+    min-height: 350px;
+    gap: 10px;
+    scroll-snap-type: x mandatory;
+    padding: 0 70px;
+    overflow-y: hidden;
+  }
+  #v-product .images img {
+    background-color: var(--clr-gray);
+    width: 300px;
+    height: 350px;
+    cursor: pointer;
+    object-fit: cover;
+    scroll-snap-align: center;
+    flex: 0 0 auto;
+  }
+
+  /* MODAL IMAGEN */
+  #image-modal {
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+  #image-modal img {
+    max-width: 90%;
+    max-height: 80%;
+    border-radius: 5px;
+  }
+  #image-modal .close-modal {
+    position: absolute;
+    top: 25px;
+    right: 35px;
+    color: #fff;
+    font-size: 34px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+</style>
+
+<script is:inline>
+  // JS propio del componente (cierre y modal de imagen)
+  document.addEventListener("DOMContentLoaded", () => {
+    const viewProduct = document.getElementById("v-product");
+    const closeView = viewProduct?.querySelector(".close-v-product");
+    const imagesWrapper = viewProduct?.querySelector(".images");
+
+    const imgModal = document.getElementById("image-modal");
+    const modalImg = imgModal?.querySelector("img");
+    const closeModal = imgModal?.querySelector(".close-modal");
+
+    // Cerrar visor de producto
+    closeView?.addEventListener("click", () => {
+      viewProduct.style.display = "none";
+    });
+
+    // Abrir modal al hacer click en cualquier imagen dentro de .images
+    imagesWrapper?.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target && target.tagName === "IMG") {
+        if (modalImg) modalImg.src = target.src;
+        if (imgModal) imgModal.style.display = "flex";
+      }
+    });
+
+    // Cerrar modal
+    closeModal?.addEventListener(
+      "click",
+      () => (imgModal.style.display = "none"),
+    );
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") imgModal.style.display = "none";
+    });
+    imgModal?.addEventListener("click", (e) => {
+      if (e.target === imgModal) imgModal.style.display = "none";
+    });
+  });
+</script>

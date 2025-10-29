@@ -1,0 +1,67 @@
+---
+/**
+ * Selector de Categoría + Buscador
+ * - Renderiza los botones de categorías (se actualizan desde JS principal)
+ * - Contiene el buscador con id="search-input"
+ *
+ * Este componente no tiene lógica interna de filtrado, solo su estructura y estilos.
+ */
+---
+
+<div class="category-search flex-column">
+  <div class="category-buttons flex-row" id="category-buttons"></div>
+
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Buscar productos..." />
+  </div>
+</div>
+
+<style is:inline>
+  /* CONTENEDOR GENERAL */
+  .category-search {
+    width: 100%;
+    align-items: center;
+    margin: 14px 0;
+  }
+
+  /* BOTONES DE CATEGORÍA */
+  .category-buttons {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .category-buttons button {
+    padding: 7px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s ease;
+    text-transform: uppercase;
+    border-radius: 7px;
+    border: none;
+    background-color: #fff;
+  }
+  .category-buttons button.active,
+  .category-buttons button:hover {
+    background-color: var(--clr-dark);
+    color: var(--clr-white);
+  }
+
+  /* BUSCADOR */
+  .search-bar {
+    display: flex;
+    justify-content: center;
+    width: 70%;
+    max-width: 350px;
+    margin: 0 auto;
+  }
+  .search-bar input {
+    width: 100%;
+    max-width: 420px;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+  }
+</style>
