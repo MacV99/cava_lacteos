@@ -1,12 +1,63 @@
 ---
-const { id, name, price, image, details } = Astro.props;
+/**
+ * Plantilla reutilizable para tarjetas de producto.
+ * Se clona vía JS: document.getElementById('product-card-tpl')
+ */
 ---
 
-<div class="item flex-column" data-id={id}>
-  <img src={image} alt={name} />
-  <h5 class="product-name">{name}</h5>
-  <h5 class="price">${price.toFixed(3)}</h5>
-  <div class="flex-row">
-    <button class="addCart button1">Agregar</button>
+<template id="product-card-tpl">
+  <div class="item flex-column" data-id="">
+    <img src="" alt="" />
+    <h5 class="product-name"></h5>
+    <h5 class="price"></h5>
+    <div class="flex-row">
+      <button class="addCart button1">Agregar</button>
+    </div>
   </div>
-</div>
+</template>
+
+<style>
+  /* Estilos SOLO de la tarjeta (scoped por Astro) */
+  .item {
+    width: 100%;
+    max-width: 280px;
+    height: 400px;
+    align-items: baseline;
+    flex: 0 0 auto;
+    justify-content: space-around;
+    text-align: left;
+    background-color: #ffffff;
+    border-radius: 14px;
+    border: solid 1px #dcdcdc;
+    padding: 14px;
+    cursor: pointer;
+  }
+  .item .flex-row {
+    position: relative;
+    width: 100%;
+    margin-top: 10px;
+    justify-content: left;
+  }
+  .item img {
+    width: 100%;
+    height: auto;
+    min-height: 100px;
+    background-color: var(--clr-gray);
+    object-fit: cover;
+    border-radius: 7px;
+  }
+  .item .product-name {
+    font-size: 11px;
+    color: var(--clr-dark);
+    margin: 7px 0;
+  }
+  .item .price {
+    letter-spacing: 3px;
+    font-size: 11px;
+    margin-bottom: auto;
+  }
+  .item button {
+    font-size: 11px;
+    border: solid 1px #dcdcdc;
+  }
+</style>

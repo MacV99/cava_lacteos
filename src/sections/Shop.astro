@@ -6,9 +6,7 @@ import Product_card from "../components/product_card.astro";
 <section id="products" class="flex-column">
   <h2>NUESTROS PRODUCTOS</h2>
 
-  <div class="category-buttons flex-row" id="category-buttons">
-    <!-- Botones dinámicos se insertan aquí -->
-  </div>
+  <div class="category-buttons flex-row" id="category-buttons"></div>
 
   <div class="search-bar">
     <input type="text" id="search-input" placeholder="Buscar productos..." />
@@ -20,9 +18,7 @@ import Product_card from "../components/product_card.astro";
   </div>
 
   <div class="main-listProduct flex-column">
-    <div class="listProduct flex-row">
-      <!-- <Product_card /> -->
-    </div>
+    <div class="listProduct flex-row"></div>
   </div>
 
   <div class="cartTab flex-column">
@@ -42,7 +38,6 @@ import Product_card from "../components/product_card.astro";
 <section id="v-product" class="flex-column">
   <i class="bi bi-x-lg close-v-product"></i>
   <div class="images flex-row"></div>
-  <!-- Nuevo contenedor de imágenes -->
   <h2 class="name">NAME PRODUCT</h2>
   <p class="details">DETAILS PRODUCT</p>
   <button class="addCart button1">Agregar</button>
@@ -53,6 +48,9 @@ import Product_card from "../components/product_card.astro";
   <span class="close-modal">×</span>
   <img src="" alt="Imagen ampliada" />
 </div>
+
+<!-- Inyecta la PLANTILLA del card una sola vez -->
+<Product_card />
 
 <style is:inline>
   /* ICONO CARRITO */
@@ -90,7 +88,7 @@ import Product_card from "../components/product_card.astro";
     padding-top: 1px;
   }
 
-  /* LISTA DE PRODUCTOS */
+  /* LISTA DE PRODUCTOS (OJO: estilos del .item están en el componente) */
   #products {
     display: flex;
     gap: 7px;
@@ -105,52 +103,6 @@ import Product_card from "../components/product_card.astro";
     justify-content: space-evenly;
     flex-wrap: wrap;
     row-gap: 21px;
-  }
-
-  #products .listProduct .item {
-    width: 100%;
-    max-width: 280px;
-    height: 400px;
-    align-items: baseline;
-    flex: 0 0 auto;
-    justify-content: space-around;
-    text-align: left;
-    background-color: #ffffff;
-    border-radius: 14px;
-    border: solid 1px #dcdcdc;
-    padding: 14px;
-    cursor: pointer;
-  }
-
-  #products .listProduct .item .flex-row {
-    position: relative;
-    width: 100%;
-    margin-top: 10px;
-    justify-content: left;
-  }
-
-  #products .listProduct .item img {
-    width: 100%;
-    height: auto;
-    min-height: 100px;
-    background-color: var(--clr-gray);
-    object-fit: cover;
-    border-radius: 7px;
-  }
-  #products .listProduct .item .product-name {
-    font-size: 11px;
-    color: var(--clr-dark);
-    margin: 7px 0;
-  }
-  #products .listProduct .item .price {
-    letter-spacing: 3px;
-    font-size: 11px;
-    margin-bottom: auto;
-  }
-
-  #products .listProduct .item button {
-    font-size: 11px;
-    border: solid 1px #dcdcdc;
   }
 
   /* CARRITO LATERAL */
@@ -191,7 +143,6 @@ import Product_card from "../components/product_card.astro";
     border: none;
     border-top: solid 1px #dcdcdc;
     cursor: pointer;
-    /* background-color: #dcdcdc; */
   }
   .cartTab button:hover {
     background-color: #dcdcdc;
@@ -243,7 +194,6 @@ import Product_card from "../components/product_card.astro";
     color: var(--clr-white);
     font-size: 16px;
   }
-  .cartTab .listCart .quantity span:nth-child(2),
   .cartTab .listCart .quantity span:nth-child(2) {
     background-color: transparent;
     color: var(--clr-dark);
@@ -337,7 +287,7 @@ import Product_card from "../components/product_card.astro";
     animation: shake 0.3s ease-in-out;
   }
 
-  /* MODAL DE IMAGEN GRANDE */
+  /* MODAL IMAGEN */
   #image-modal {
     position: fixed;
     z-index: 9999;
@@ -366,7 +316,7 @@ import Product_card from "../components/product_card.astro";
     font-weight: bold;
   }
 
-  /* SELECTOR DE CATEGORÍA */
+  /* SELECTOR DE CATEGORÍA + BUSCADOR */
   .category-buttons {
     flex-wrap: wrap;
     gap: 10px;
@@ -387,8 +337,6 @@ import Product_card from "../components/product_card.astro";
     background-color: var(--clr-dark);
     color: var(--clr-white);
   }
-
-  /* BUSCADOR */
   .search-bar {
     display: flex;
     justify-content: center;
@@ -403,15 +351,6 @@ import Product_card from "../components/product_card.astro";
     border-radius: 4px;
     font-size: 14px;
     outline: none;
-  }
-
-  /* Ajuste simple en pantallas anchas */
-  @media (min-width: 700px) {
-    #products .listProduct .item {
-    }
-    #products .listProduct .item img {
-      /* height: 350px; */
-    }
   }
 </style>
 
@@ -446,7 +385,6 @@ import Product_card from "../components/product_card.astro";
     "click",
     () => ($viewProduct.style.display = "none"),
   );
-
   iconCart.addEventListener("click", () => body.classList.toggle("showCart"));
   closeCart.addEventListener("click", () => body.classList.toggle("showCart"));
 
@@ -495,6 +433,7 @@ import Product_card from "../components/product_card.astro";
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
 
+  // ======== SOLO CAMBIÓ ESTA PARTE: generación de cards clonando el template ========
   const addDataToHTML = () => {
     listProductHTML.innerHTML = "";
 
@@ -509,44 +448,48 @@ import Product_card from "../components/product_card.astro";
 
     if (filteredList.length > 0) {
       const fragment = document.createDocumentFragment();
+      const tpl = document.getElementById("product-card-tpl");
 
       filteredList.forEach((product) => {
-        const newProduct = document.createElement("div");
-        newProduct.dataset.id = products.indexOf(product);
-        newProduct.classList.add("item", "flex-column");
-        newProduct.innerHTML = `
-        <img src=".${cleanImagePath(product.images[0])}" alt="${product.name}">
-        <h5 class="product-name">${product.name}</h5>
-        <h5 class="price">$${product.price.toFixed(3)}</h5>
-        <div class="flex-row">
-          <button class="addCart button1">Agregar</button>
-        </div>`;
+        const idx = products.indexOf(product);
+        const node = tpl.content.firstElementChild.cloneNode(true);
 
-        newProduct.addEventListener("click", (e) => {
+        node.dataset.id = idx;
+
+        const img = node.querySelector("img");
+        img.src = `.${cleanImagePath(product.images[0])}`;
+        img.alt = product.name;
+
+        node.querySelector(".product-name").textContent = product.name;
+        node.querySelector(".price").textContent =
+          `$${product.price.toFixed(3)}`;
+
+        node.addEventListener("click", (e) => {
           if (e.target.closest(".addCart")) return;
 
           const imagesContainer = $viewProduct.querySelector(".images");
           imagesContainer.innerHTML = "";
           product.images.forEach((imgPath) => {
-            const img = document.createElement("img");
-            img.src = `.${cleanImagePath(imgPath)}`;
-            img.alt = product.name;
-            imagesContainer.appendChild(img);
+            const im = document.createElement("img");
+            im.src = `.${cleanImagePath(imgPath)}`;
+            im.alt = product.name;
+            imagesContainer.appendChild(im);
           });
 
           $viewProduct.querySelector(".name").textContent = product.name;
           $viewProduct.querySelector(".details").innerHTML =
             product.details.replace(/\n/g, "<br>");
           $viewProduct.style.display = "flex";
-          currentProductIndex = products.indexOf(product);
+          currentProductIndex = idx;
         });
 
-        fragment.appendChild(newProduct);
+        fragment.appendChild(node);
       });
 
       listProductHTML.appendChild(fragment);
     }
   };
+  // ===================================================================================
 
   $searchInput?.addEventListener("input", (e) => {
     searchTerm = e.target.value;
