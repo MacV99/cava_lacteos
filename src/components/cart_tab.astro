@@ -25,7 +25,7 @@
     right: -410px;
     bottom: 0;
     transition: 0.3s ease-in-out;
-    border: solid 1px #dcdcdc;
+    border: solid 1px var(--clr-gray);
     z-index: 111;
   }
   .showCart .cartTab {
@@ -36,9 +36,12 @@
     font-size: 28px;
     color: var(--clr-dark);
     letter-spacing: 3px;
-    border-bottom: solid 1px;
+    border-bottom: solid 1px var(--clr-gray);
     text-transform: uppercase;
+    width: 100%;
+    text-align: center;
   }
+
   .cartTab .btn {
     display: flex;
     margin-top: auto;
@@ -51,11 +54,11 @@
     font-size: 12px;
     font-weight: 700;
     border: none;
-    border-top: solid 1px #dcdcdc;
+    border-top: solid 1px var(--clr-gray);
     cursor: pointer;
   }
   .cartTab button:hover {
-    background-color: #dcdcdc;
+    background-color: var(--clr-gray);
   }
   .cartTab .listCart {
     overflow: auto;

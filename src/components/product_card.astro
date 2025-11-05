@@ -28,7 +28,7 @@
     text-align: left;
     background-color: #ffffff;
     border-radius: 14px;
-    border: solid 1px #dcdcdc;
+    border: solid 1px var(--clr-gray);
     padding: 14px;
     cursor: pointer;
   }
@@ -58,6 +58,12 @@
   }
   .item button {
     font-size: 11px;
-    border: solid 1px #dcdcdc;
+    border: solid 1px var(--clr-gray);
+    background-color: transparent;
+    transition: 0.2s ease;
+  }
+
+  .item button:hover {
+    background-color: var(--clr-gray);
   }
 </style>
