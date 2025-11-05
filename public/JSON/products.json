@@ -2,7 +2,7 @@
     "#CATEGORIA1": [
         {
             "name": "Producto 1 ACCESORIOS",
-            "price": 170000,
+            "price": 170.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nDuis aute irure dolor in reprehenderit.\nSed do eiusmod tempor incididunt.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -12,7 +12,7 @@
         },
         {
             "name": "Producto 2 ACCESORIOS",
-            "price": 200000,
+            "price": 200.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nUt enim ad minim veniam.\nQuis nostrud exercitation ullamco.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -22,7 +22,7 @@
         },
         {
             "name": "Producto 3 ACCESORIOS",
-            "price": 220000,
+            "price": 220.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nExcepteur sint occaecat cupidatat non proident.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -34,7 +34,7 @@
     "#CATEGORIA2": [
         {
             "name": "Producto 1 HOGAR",
-            "price": 120000,
+            "price": 120.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nAliquam at porttitor sem.\nAliquam erat volutpat.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -44,7 +44,7 @@
         },
         {
             "name": "Producto 2 HOGAR",
-            "price": 180000,
+            "price": 180.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nCras ultricies ligula sed magna dictum porta.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -54,7 +54,7 @@
         },
         {
             "name": "Producto 3 HOGAR",
-            "price": 110000,
+            "price": 110.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nVivamus suscipit tortor eget felis porttitor volutpat.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -66,7 +66,7 @@
     "#CATEGORIA3": [
         {
             "name": "Producto 1 GADGETS",
-            "price": 200000,
+            "price": 200.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nPellentesque in ipsum id orci porta dapibus.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -76,7 +76,7 @@
         },
         {
             "name": "Producto 2 GADGETS",
-            "price": 200000,
+            "price": 200.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nCurabitur non nulla sit amet nisl tempus convallis quis ac lectus.",
             "images": [
                 "/img/products/pro1.jpg",
@@ -86,7 +86,7 @@
         },
         {
             "name": "Producto 3 GADGETS",
-            "price": 80000,
+            "price": 80.000,
             "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nDonec sollicitudin molestie malesuada.",
             "images": [
                 "/img/products/pro1.jpg",
