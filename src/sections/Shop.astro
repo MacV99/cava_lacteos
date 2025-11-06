@@ -78,7 +78,8 @@ import CategorySearch from "../components/category_search.astro";
     width: 100%;
     justify-content: space-evenly;
     flex-wrap: wrap;
-    row-gap: 21px;
+    row-gap: 14px;
+    min-height: 200px;
   }
 
   /* ANIMACIÓN ICONO CARRITO */
@@ -102,6 +103,15 @@ import CategorySearch from "../components/category_search.astro";
   .icon-cart.animate-cart {
     animation: shake 0.3s ease-in-out;
   }
+
+  .no-results {
+    text-align: center;
+    color: var(--clr-dark);
+    font-weight: 500;
+    font-size: 1rem;
+    margin-top: 20px;
+    opacity: 0.7;
+  }
 </style>
 
 <script is:inline>
@@ -115,10 +125,6 @@ import CategorySearch from "../components/category_search.astro";
   const iconCartSpan = document.querySelector(".icon-cart span");
   const body = document.querySelector("body");
   const $viewProduct = document.getElementById("v-product");
-
-  const closeCart = document.querySelector(".close");
-  const $cleanCart = document.querySelector(".clean");
-  const $btnBuy = document.querySelector(".buy");
 
   // Estado
   let selectedCategory = "TODOS";
@@ -136,32 +142,8 @@ import CategorySearch from "../components/category_search.astro";
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
 
-  // Carrito: abrir/cerrar
+  // abrir carrito
   iconCart.addEventListener("click", () => body.classList.toggle("showCart"));
-  closeCart.addEventListener("click", () => body.classList.toggle("showCart"));
-
-  // Carrito: limpiar
-  $cleanCart.addEventListener("click", () => {
-    cart = [];
-    addCartToHTML();
-    localStorage.removeItem("cart");
-  });
-
-  // Carrito: comprar (WhatsApp)
-  $btnBuy.addEventListener("click", () => {
-    const totalEl = document.querySelector(".cart-total strong");
-    const total = totalEl ? totalEl.innerText : "Total: $0.000";
-    let mensaje = `Hola DISTRITO COMERCIAL!, quiero hacer un pedido:\n\n`;
-
-    cart.forEach((item) => {
-      const p = products[item.product_id];
-      mensaje += `- ${p.name} - $${p.price.toFixed(3)} x ${item.quantity} = ${(p.price * item.quantity).toFixed(3)}\n`;
-    });
-    mensaje += `\n*${total}*`;
-
-    const urlWhatsApp = `https://wa.me/573222887148?text=${encodeURIComponent(mensaje)}`;
-    window.open(urlWhatsApp, "_blank");
-  });
 
   // Render: botones de categoría
   const renderCategoryButtons = () => {
@@ -237,6 +219,12 @@ import CategorySearch from "../components/category_search.astro";
       });
 
       listProductHTML.appendChild(fragment);
+    } else {
+      // ⚠️ Mostrar mensaje cuando no hay resultados
+      const message = document.createElement("div");
+      message.classList.add("no-results");
+      message.textContent = "No se encontraron productos con ese criterio.";
+      listProductHTML.appendChild(message);
     }
   };
 

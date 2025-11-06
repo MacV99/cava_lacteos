@@ -127,3 +127,35 @@
     letter-spacing: 3px;
   }
 </style>
+
+<script is:inline>
+  const closeCart = document.querySelector(".close");
+  const $cleanCart = document.querySelector(".clean");
+  const $btnBuy = document.querySelector(".buy");
+
+  //cerrar carrito
+  closeCart.addEventListener("click", () => body.classList.toggle("showCart"));
+
+  // Carrito: limpiar
+  $cleanCart.addEventListener("click", () => {
+    cart = [];
+    addCartToHTML();
+    localStorage.removeItem("cart");
+  });
+
+  // Carrito: comprar (WhatsApp)
+  $btnBuy.addEventListener("click", () => {
+    const totalEl = document.querySelector(".cart-total strong");
+    const total = totalEl ? totalEl.innerText : "Total: $0.000";
+    let mensaje = `Hola DISTRITO COMERCIAL!, quiero hacer un pedido:\n\n`;
+
+    cart.forEach((item) => {
+      const p = products[item.product_id];
+      mensaje += `- ${p.name} - $${p.price.toFixed(3)} x ${item.quantity} = ${(p.price * item.quantity).toFixed(3)}\n`;
+    });
+    mensaje += `\n*${total}*`;
+
+    const urlWhatsApp = `https://wa.me/573222887148?text=${encodeURIComponent(mensaje)}`;
+    window.open(urlWhatsApp, "_blank");
+  });
+</script>
