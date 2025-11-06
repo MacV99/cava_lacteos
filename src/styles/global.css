@@ -25,7 +25,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* scroll-padding-top: 100px;  en caso de un navbar ajustar tamaño*/
+  scroll-padding-top: 80px;
 }
 
 body {

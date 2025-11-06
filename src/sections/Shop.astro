@@ -108,9 +108,8 @@ import CategorySearch from "../components/category_search.astro";
     text-align: center;
     color: var(--clr-dark);
     font-weight: 500;
-    font-size: 1rem;
+    font-size: 1.5rem;
     margin-top: 20px;
-    opacity: 0.7;
   }
 </style>
 
@@ -223,7 +222,7 @@ import CategorySearch from "../components/category_search.astro";
       // ⚠️ Mostrar mensaje cuando no hay resultados
       const message = document.createElement("div");
       message.classList.add("no-results");
-      message.textContent = "No se encontraron productos con ese criterio.";
+      message.textContent = "No se encontraron productos..";
       listProductHTML.appendChild(message);
     }
   };
