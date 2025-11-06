@@ -56,7 +56,7 @@
     justify-content: flex-start;
     overflow-x: auto;
     width: 100%;
-    min-height: 350px;
+    height: auto;
     gap: 10px;
     scroll-snap-type: x mandatory;
     padding: 0 70px;
@@ -64,8 +64,8 @@
   }
   #v-product .images img {
     background-color: var(--clr-gray);
-    width: 300px;
     height: 350px;
+    width: auto;
     cursor: pointer;
     object-fit: cover;
     scroll-snap-align: center;
@@ -99,6 +99,27 @@
     font-size: 34px;
     cursor: pointer;
     font-weight: bold;
+  }
+
+  #v-product button {
+    border: solid 1px var(--clr-gray);
+    background-color: #fff;
+  }
+
+  @media (min-width: 700px) {
+    #v-product {
+      max-height: 80%;
+      margin: auto;
+      border-radius: 12px;
+    }
+
+    #v-product .images {
+      height: 250px;
+      
+    }
+
+    #v-product .images img {
+      height: 250px;
   }
 </style>
 
