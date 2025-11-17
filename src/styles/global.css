@@ -16,7 +16,7 @@
 
 @font-face {
   font-family: "Lemon/Milk";
-  src: url("/Font/LEMONMILK-Light.otf") format("truetype");
+  src: url("./Font/LEMONMILK-Light.otf") format("truetype");
 }
 
 * {
