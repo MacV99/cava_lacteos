@@ -1,97 +1,43 @@
 {
-    "#CATEGORIA1": [
+    "EXPERIENCIAS": [
         {
-            "name": "Producto 1 ACCESORIOS",
-            "price": 170.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nDuis aute irure dolor in reprehenderit.\nSed do eiusmod tempor incididunt.",
-            "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
-            ]
-        },
-        {
-            "name": "Producto 2 ACCESORIOS",
-            "price": 200.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nUt enim ad minim veniam.\nQuis nostrud exercitation ullamco.",
-            "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
-            ]
-        },
-        {
-            "name": "Producto 3 ACCESORIOS",
-            "price": 220.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nExcepteur sint occaecat cupidatat non proident.",
-            "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
-            ]
-        }
-    ],
-    "#CATEGORIA2": [
-        {
-            "name": "Producto 1 HOGAR",
-            "price": 120.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nAliquam at porttitor sem.\nAliquam erat volutpat.",
-            "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
-            ]
-        },
-        {
-            "name": "Producto 2 HOGAR",
+            "name": "Fuego Ancestral",
             "price": 180.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nCras ultricies ligula sed magna dictum porta.",
+            "details": "Cocina con brasas y técnicas tradicionales. Aprenderás a preparar un plato insignia del restaurante usando fogón de leña o brasa. Se explicará el origen cultural de esta técnica y su relación con comunidades rurales. Incluye degustación del plato + certificado digital “Maestro del Fuego Demente”.",
             "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
+                "/img/products/evento1.jpg",
+                "/img/products/evento1.jpg",
+                "/img/products/evento1.jpg"
             ]
         },
         {
-            "name": "Producto 3 HOGAR",
-            "price": 110.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nVivamus suscipit tortor eget felis porttitor volutpat.",
+            "name": "Sabores del Territorio",
+            "price": 180.000,
+            "details": "Taller de cocina con ingredientes autóctonos. Cada sesión trabaja un ingrediente local (quinua, maíz criollo, ají, pipián, coca, borojó, chontaduro, etc). Se enseña una receta moderna del restaurante usando ese ingrediente y una receta tradicional. Clase + historia + degustación.",
             "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
+                "/img/products/evento2.jpg",
+                "/img/products/evento2.jpg",
+                "/img/products/evento2.jpg"
+            ]
+        },
+        {
+            "name": "De la Chagra al Plato",
+            "price": 180.000,
+            "details": "La experiencia de la chicha artesanal. Taller para aprender a preparar una chicha desde cero: fermentación, granos, tiempos. Historia de la chicha en Colombia + degustación de variedades. Se entrega un pequeño starter kit (masa o insumos).",
+            "images": [
+                "/img/products/evento3.jpg",
+                "/img/products/evento3.jpg",
+                "/img/products/evento3.jpg"
             ]
         }
     ],
-    "#CATEGORIA3": [
+    "EVENTOS": [
         {
-            "name": "Producto 1 GADGETS",
-            "price": 200.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nPellentesque in ipsum id orci porta dapibus.",
+            "name": "Fiesta de San Silvestre",
+            "price": 180.000,
+            "details": "¡Fiesta de San Silvestre! \n 31 de diciembre de 2025 \nCena de tres tiempo, vino espumante y música en vivo. \nReservar cupos al +57 320 937 3488",
             "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
-            ]
-        },
-        {
-            "name": "Producto 2 GADGETS",
-            "price": 200.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nCurabitur non nulla sit amet nisl tempus convallis quis ac lectus.",
-            "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
-            ]
-        },
-        {
-            "name": "Producto 3 GADGETS",
-            "price": 80.000,
-            "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nDonec sollicitudin molestie malesuada.",
-            "images": [
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg",
-                "/img/products/pro1.jpg"
+                "/img/products/evento.jpg"
             ]
         }
     ]

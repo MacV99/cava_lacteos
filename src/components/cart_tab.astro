@@ -6,12 +6,12 @@
 ---
 
 <div class="cartTab flex-column">
-  <h2>Tu Carrito</h2>
+  <h2>Tus experiencias</h2>
   <div class="listCart flex-column"></div>
   <div class="btn">
     <button class="close">Cerrar</button>
     <button class="clean">Limpiar</button>
-    <button class="buy">Confirmar <br /> Orden</button>
+    <button class="buy">Confirmar</button>
   </div>
 </div>
 
@@ -150,7 +150,7 @@
   $btnBuy.addEventListener("click", () => {
     const totalEl = document.querySelector(".cart-total strong");
     const total = totalEl ? totalEl.innerText : "Total: $0.000";
-    let mensaje = `Hola DISTRITO COMERCIAL!, quiero hacer un pedido:\n\n`;
+    let mensaje = `Hola Chichería Demente!, quiero reservar:\n\n`;
 
     cart.forEach((item) => {
       const p = products[item.product_id];
@@ -158,7 +158,7 @@
     });
     mensaje += `\n*${total}*`;
 
-    const urlWhatsApp = `https://wa.me/573222887148?text=${encodeURIComponent(mensaje)}`;
+    const urlWhatsApp = `https://wa.me/573158251719?text=${encodeURIComponent(mensaje)}`;
     window.open(urlWhatsApp, "_blank");
   });
 </script>
