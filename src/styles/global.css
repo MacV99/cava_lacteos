@@ -1,8 +1,10 @@
 :root {
   --clr-red: #EA4B5E;
   /* primario */
-  --clr-orange: #F27D72;
+  --clr-green: #033216;
   /* secundario */
+  --clr-green2: #698459;
+
   --clr-dark: #191919;
 
   --clr-gray: #dcdcdc;
@@ -108,13 +110,23 @@ footer>* {
 a.boton,
 .button1 {
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 14px;
   font-weight: 700;
   font-size: 14px;
   border: none;
   letter-spacing: 2px;
   padding-left: 16px;
   cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.button1 {
+  background-color: var(--clr-green);
+  color: var(--clr-white);
+}
+
+.button1:hover {
+  background-color: var(--clr-green2);
 }
 
 
