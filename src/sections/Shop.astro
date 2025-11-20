@@ -143,7 +143,7 @@ import CategorySearch from "../components/category_search.astro";
       .replace(/[\u0300-\u036f]/g, "");
 
   // abrir carrito
-  iconCart.addEventListener("click", () => body.classList.toggle("showCart"));
+  // iconCart.addEventListener("click", () => body.classList.toggle("showCart"));
 
   // Render: botones de categoría
   const renderCategoryButtons = () => {
@@ -234,22 +234,37 @@ import CategorySearch from "../components/category_search.astro";
     addDataToHTML();
   });
 
-  // Click en "Agregar" desde la card
+  // Click en "Reservar / Agregar" desde la card → abrir link en nueva pestaña
   listProductHTML.addEventListener("click", (event) => {
     if (event.target.classList.contains("addCart")) {
-      const product_id = event.target.closest(".item").dataset.id;
-      addToCart(product_id);
-      animateCartIcon();
+      const item = event.target.closest(".item");
+      if (!item) return;
+
+      const productIndex = Number(item.dataset.id);
+      const product = products[productIndex];
+
+      if (product && product.link) {
+        // 🔗 Abrir en nueva pestaña
+        window.open(product.link, "_blank");
+      } else {
+        console.warn("Este producto no tiene link definido en products.json");
+      }
     }
   });
 
-  // Click en "Agregar" dentro de la vista de producto
+  // Click en "Reservar / Agregar" dentro de la vista de producto → abrir link del producto
   document
     .querySelector("#v-product .addCart")
     ?.addEventListener("click", () => {
       if (currentProductIndex !== null) {
-        addToCart(currentProductIndex);
-        animateCartIcon();
+        const product = products[currentProductIndex];
+
+        if (product && product.link) {
+          // 🔗 Abrir en nueva pestaña
+          window.open(product.link, "_blank");
+        } else {
+          console.warn("Este producto no tiene link definido en products.json");
+        }
       }
     });
 
