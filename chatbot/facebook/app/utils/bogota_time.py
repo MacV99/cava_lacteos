@@ -23,7 +23,7 @@ def format(dt: datetime | None = None) -> str:
         dt = dt.astimezone(BOGOTA_TZ)
     # Construido manualmente para ser portable (Windows no soporta %-d/%-m/%-I).
     hour12 = dt.hour % 12 or 12
-    am_pm = "a. m." if dt.hour < 12 else "p. m."
+    am_pm = "am" if dt.hour < 12 else "pm"
     return f"{dt.day}/{dt.month}/{dt.year}, {hour12}:{dt.minute:02d}:{dt.second:02d} {am_pm}"
 
 
