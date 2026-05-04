@@ -45,7 +45,13 @@ logger = logging.getLogger(__name__)
 _buffer_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 _PEDIDO_RE = re.compile(
-    r"PEDIDO_CONFIRMADO\r?\nnombre:\s*(.+)\r?\npedido:\s*(.+)\r?\ntotal:\s*(\d+)",
+    r"PEDIDO_CONFIRMADO\r?\n"
+    r"nombre:\s*(.+)\r?\n"
+    r"telefono:\s*(.+)\r?\n"
+    r"direccion:\s*(.+)\r?\n"
+    r"pago:\s*(.+)\r?\n"
+    r"pedido:\s*(.+)\r?\n"
+    r"total:\s*(\d+)",
 )
 
 
@@ -163,6 +169,9 @@ async def handle_event(messaging: dict) -> None:
                 orders.register_order,
                 psid,
                 pedido_datos["nombre"],
+                pedido_datos["telefono"],
+                pedido_datos["direccion"],
+                pedido_datos["pago"],
                 pedido_datos["pedido"],
                 pedido_datos["total"],
             )
@@ -225,9 +234,12 @@ def _parse_reply(raw: str) -> tuple[bool, dict | None, str]:
         match = _PEDIDO_RE.search(raw)
         if match:
             pedido_datos = {
-                "nombre": match.group(1).strip(),
-                "pedido": match.group(2).strip(),
-                "total":  match.group(3).strip(),
+                "nombre":    match.group(1).strip(),
+                "telefono":  match.group(2).strip(),
+                "direccion": match.group(3).strip(),
+                "pago":      match.group(4).strip(),
+                "pedido":    match.group(5).strip(),
+                "total":     match.group(6).strip(),
             }
         # Remover el bloque técnico del texto visible
         visible_text = re.sub(r"PEDIDO_CONFIRMADO[\s\S]*?\n\n", "", raw, count=1).strip()
