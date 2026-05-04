@@ -37,6 +37,7 @@ from app.llm.prompts import build_system_prompt
 from app.messenger.client import send_text, send_typing_on
 from app.messenger.parser import parse
 from app.sheets import activity, cache as sheets_cache, orders
+from app.utils import bogota_time
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +189,7 @@ async def handle_event(messaging: dict) -> None:
         {"role": "user",      "content": combined_message},
         {"role": "assistant", "content": visible_text},
     ]
-    ultima_vez_new = datetime.now(timezone.utc).isoformat()
+    ultima_vez_new = bogota_time.format()
     try:
         await asyncio.to_thread(
             activity.update_after_response,
@@ -214,14 +215,17 @@ def _parse_json_list(raw: str) -> list:
 def _is_new_session(ultima_vez_str: str) -> bool:
     if not ultima_vez_str:
         return True
-    try:
-        ultima_vez = datetime.fromisoformat(ultima_vez_str)
-        if ultima_vez.tzinfo is None:
-            ultima_vez = ultima_vez.replace(tzinfo=timezone.utc)
-        elapsed_minutes = (datetime.now(timezone.utc) - ultima_vez).total_seconds() / 60
-        return elapsed_minutes > settings.session_timeout_minutes
-    except (ValueError, TypeError):
-        return True
+    # Compatibilidad: aceptamos el formato Bogotá nuevo y el ISO antiguo.
+    ultima_vez = bogota_time.parse(ultima_vez_str)
+    if ultima_vez is None:
+        try:
+            ultima_vez = datetime.fromisoformat(ultima_vez_str)
+            if ultima_vez.tzinfo is None:
+                ultima_vez = ultima_vez.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            return True
+    elapsed_minutes = (datetime.now(timezone.utc) - ultima_vez).total_seconds() / 60
+    return elapsed_minutes > settings.session_timeout_minutes
 
 
 def _parse_reply(raw: str) -> tuple[bool, dict | None, str]:
