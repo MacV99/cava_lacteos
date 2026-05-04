@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: cava-chatbot-facebook
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: META_VERIFY_TOKEN
+        sync: false
+      - key: META_PAGE_ACCESS_TOKEN
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_CHAT_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct
+      - key: GROQ_WHISPER_MODEL
+        value: whisper-large-v3
+      - key: GOOGLE_SHEETS_ID
+        sync: false
+      - key: GOOGLE_SA_JSON_B64
+        sync: false
+      - key: CATALOG_URL
+        value: https://catalogo-la-cava.netlify.app/
+      - key: BUFFER_WAIT_SECONDS
+        value: "5"
+      - key: HISTORY_MAX_ITEMS
+        value: "28"
+      - key: SESSION_TIMEOUT_MINUTES
+        value: "60"
