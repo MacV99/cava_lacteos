@@ -1,4 +1,4 @@
-"""Cliente para la Graph API de Meta (envío de mensajes)."""
+"""Cliente para la Graph API de Meta (envío de mensajes — Messenger e Instagram)."""
 import logging
 
 import httpx
@@ -10,24 +10,30 @@ logger = logging.getLogger(__name__)
 _GRAPH_URL = "https://graph.facebook.com/v20.0/me/messages"
 
 
-async def send_text(psid: str, text: str) -> None:
+def _token_for(platform: str) -> str:
+    if platform == "instagram" and settings.meta_ig_access_token:
+        return settings.meta_ig_access_token
+    return settings.meta_page_access_token
+
+
+async def send_text(psid: str, text: str, platform: str = "messenger") -> None:
     payload = {
         "recipient": {"id": psid},
         "message": {"text": text},
     }
-    await _post(payload)
+    await _post(payload, platform)
 
 
-async def send_typing_on(psid: str) -> None:
+async def send_typing_on(psid: str, platform: str = "messenger") -> None:
     payload = {
         "recipient": {"id": psid},
         "sender_action": "typing_on",
     }
-    await _post(payload)
+    await _post(payload, platform)
 
 
-async def _post(payload: dict) -> None:
-    params = {"access_token": settings.meta_page_access_token}
+async def _post(payload: dict, platform: str = "messenger") -> None:
+    params = {"access_token": _token_for(platform)}
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(_GRAPH_URL, params=params, json=payload)
         if resp.status_code != 200:

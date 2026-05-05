@@ -66,7 +66,7 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
 
     # Imagen / video / sticker / archivo → no soportamos
     if event.type in ("image", "other"):
-        await _safe_send(psid, "Por ahora solo puedo leer texto y audios 🙏\nSi tiene alguna pregunta escríbala y con gusto le ayudo.")
+        await _safe_send(psid, "Por ahora solo puedo leer texto y audios 🙏\nSi tiene alguna pregunta escríbala y con gusto le ayudo.", platform_name)
         return
 
     # Transcribir audio
@@ -92,7 +92,7 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
         return
 
     # Typing inmediato
-    await _safe_send_typing(psid)
+    await _safe_send_typing(psid, platform_name)
 
     # ── BUFFER DEBOUNCE ──────────────────────────────────────────────────────
     my_timestamp = datetime.now(timezone.utc).isoformat()
@@ -153,7 +153,7 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
         raw_reply = await chat(messages)
     except Exception as exc:
         logger.error("Error llamando a Groq: %s", exc)
-        await _safe_send(psid, "Ups, tuve un problema técnico 😅\nPor favor escribe tu mensaje de nuevo y te ayudo enseguida.")
+        await _safe_send(psid, "Ups, tuve un problema técnico 😅\nPor favor escribe tu mensaje de nuevo y te ayudo enseguida.", platform_name)
         await asyncio.to_thread(activity.clear_state, psid)
         return
 
@@ -182,9 +182,9 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
             logger.error("Error guardando pedido: %s", exc)
 
     # ── ENVIAR RESPUESTA ─────────────────────────────────────────────────────
-    await _safe_send(psid, msg1)
+    await _safe_send(psid, msg1, platform_name)
     if msg2:
-        await _safe_send(psid, msg2)
+        await _safe_send(psid, msg2, platform_name)
 
     # ── ACTUALIZAR ACTIVIDAD ─────────────────────────────────────────────────
     updated_historial = trimmed_history + [
@@ -256,15 +256,15 @@ def _parse_reply(raw: str) -> tuple[bool, dict | None, str]:
     return es_pedido, pedido_datos, visible_text
 
 
-async def _safe_send(psid: str, text: str) -> None:
+async def _safe_send(psid: str, text: str, platform: str = "messenger") -> None:
     try:
-        await send_text(psid, text)
+        await send_text(psid, text, platform)
     except Exception as exc:
         logger.error("Error enviando mensaje a %s: %s", psid, exc)
 
 
-async def _safe_send_typing(psid: str) -> None:
+async def _safe_send_typing(psid: str, platform: str = "messenger") -> None:
     try:
-        await send_typing_on(psid)
+        await send_typing_on(psid, platform)
     except Exception as exc:
         logger.debug("Error enviando typing_on a %s: %s", psid, exc)

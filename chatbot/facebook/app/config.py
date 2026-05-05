@@ -4,10 +4,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    # Meta / Facebook
+    # Meta / Facebook + Instagram
     meta_verify_token: str
     meta_page_access_token: str
     meta_app_secret: str
+    meta_ig_access_token: str = ""
+    meta_ig_app_secret: str = ""
 
     # Groq
     groq_api_key: str

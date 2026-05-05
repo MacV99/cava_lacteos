@@ -88,17 +88,20 @@ async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
 # ── Validación de firma ───────────────────────────────────────────────────────
 
 def _verify_signature(request: Request, body: bytes) -> None:
-    """Valida X-Hub-Signature-256 enviada por Meta."""
+    """Valida X-Hub-Signature-256 enviada por Meta (Messenger o Instagram)."""
     signature_header = request.headers.get("x-hub-signature-256", "")
     if not signature_header.startswith("sha256="):
         raise HTTPException(status_code=403, detail="Firma ausente")
 
-    expected = hmac.new(
-        settings.meta_app_secret.encode(),
-        body,
-        hashlib.sha256,
-    ).hexdigest()
-
     received = signature_header.removeprefix("sha256=")
-    if not hmac.compare_digest(expected, received):
-        raise HTTPException(status_code=403, detail="Firma inválida")
+
+    secrets = [settings.meta_app_secret]
+    if settings.meta_ig_app_secret:
+        secrets.append(settings.meta_ig_app_secret)
+
+    for secret in secrets:
+        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        if hmac.compare_digest(expected, received):
+            return
+
+    raise HTTPException(status_code=403, detail="Firma inválida")
