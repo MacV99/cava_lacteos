@@ -30,11 +30,8 @@ def _ws() -> gspread.Worksheet:
 
 def _find_row(ws: gspread.Worksheet, sender_id: str) -> int | None:
     """Retorna el número de fila (1-based) del sender_id, o None si no existe."""
-    try:
-        cell = ws.find(sender_id, in_column=COL_SENDER_ID)
-        return cell.row
-    except gspread.exceptions.CellNotFound:
-        return None
+    cell = ws.find(sender_id, in_column=COL_SENDER_ID)
+    return cell.row if cell else None
 
 
 def get_contact(sender_id: str) -> dict:
