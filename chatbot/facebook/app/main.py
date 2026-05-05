@@ -11,7 +11,7 @@ from app.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Cava Lácteos — Facebook Chatbot")
+app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram)")
 
 _scheduler = AsyncIOScheduler()
 
@@ -62,7 +62,7 @@ async def webhook_verify(
 
 @app.post("/webhook")
 async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
-    """Recibe eventos de Messenger.
+    """Recibe eventos de Messenger e Instagram DMs.
 
     Responde 200 inmediatamente (Meta tiene timeout de 20 s) y procesa
     en background para no bloquear la respuesta con el wait de 5 s del debounce.
@@ -72,14 +72,15 @@ async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
 
     payload = await request.json()
 
-    if payload.get("object") != "page":
+    platform = payload.get("object")  # "page" (Messenger) o "instagram"
+    if platform not in ("page", "instagram"):
         return Response(status_code=200)
 
     from app.bot.orchestrator import handle_event
 
     for entry in payload.get("entry", []):
         for messaging in entry.get("messaging", []):
-            background_tasks.add_task(handle_event, messaging)
+            background_tasks.add_task(handle_event, messaging, platform)
 
     return Response(content="EVENT_RECEIVED", status_code=200)
 

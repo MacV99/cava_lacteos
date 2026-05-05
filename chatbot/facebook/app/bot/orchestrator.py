@@ -56,8 +56,9 @@ _PEDIDO_RE = re.compile(
 )
 
 
-async def handle_event(messaging: dict) -> None:
-    event = parse(messaging)
+async def handle_event(messaging: dict, platform: str = "page") -> None:
+    platform_name = "instagram" if platform == "instagram" else "messenger"
+    event = parse(messaging, platform_name)
     if event is None:
         return
 
@@ -175,6 +176,7 @@ async def handle_event(messaging: dict) -> None:
                 pedido_datos["pago"],
                 pedido_datos["pedido"],
                 pedido_datos["total"],
+                platform_name,
             )
         except Exception as exc:
             logger.error("Error guardando pedido: %s", exc)

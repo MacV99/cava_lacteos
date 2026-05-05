@@ -12,8 +12,8 @@ Workspace multi-proyecto para la empresa **Cava Lácteos**. Cada subcarpeta es u
 cava_lacteos/
 ├── website/          ← Sitio web y catálogo (Astro) — sin inicializar
 ├── chatbot/
-│   ├── facebook/     ← Chatbot Messenger (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
-│   ├── instagram/    ← Pendiente
+│   ├── facebook/     ← Chatbot Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
+│   ├── instagram/    ← Integrado en facebook/ (mismo deploy, misma Graph API)
 │   └── whatsapp/     ← Pendiente
 └── CLAUDE.md
 ```
