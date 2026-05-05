@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     meta_app_secret: str
     meta_ig_access_token: str = ""
     meta_ig_app_secret: str = ""
+    meta_ig_account_id: str = ""
 
     # Groq
     groq_api_key: str
