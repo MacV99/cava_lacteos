@@ -8,9 +8,9 @@ class Settings(BaseSettings):
     meta_verify_token: str
     meta_page_access_token: str
     meta_app_secret: str
-    meta_ig_access_token: str = ""
-    meta_ig_app_secret: str = ""
-    meta_ig_account_id: str = ""
+    meta_ig_access_token: str = "IGAAU6abiiilpBZAFkxSHA3SVE4RTNSejdLeEhmNXlIdFdncFJmRmR1aURQbEZAmbFBKemhRRzhoekVURTVpc1hHeklMQ1Y1dVdMODBKdVlTdTlNa0I1RGhpck5wa2RVS2dwOFhFZAHkwaFpfX0U2NUdqUk9DZAGx3TTZACM1N3alJWbwZDZD"
+    meta_ig_app_secret: str = "5331411355a969f01db4125ec8e060bb"
+    meta_ig_account_id: str = "17841436769814214"
 
     # Groq
     groq_api_key: str

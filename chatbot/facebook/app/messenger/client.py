@@ -32,8 +32,14 @@ async def send_typing_on(psid: str, platform: str = "messenger") -> None:
     await _post(payload, platform)
 
 
+def _token_for(platform: str) -> str:
+    if platform == "instagram" and settings.meta_ig_access_token:
+        return settings.meta_ig_access_token
+    return settings.meta_page_access_token
+
+
 async def _post(payload: dict, platform: str = "messenger") -> None:
-    params = {"access_token": settings.meta_page_access_token}
+    params = {"access_token": _token_for(platform)}
     url = _url_for(platform)
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(url, params=params, json=payload)
