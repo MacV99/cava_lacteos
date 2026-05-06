@@ -15,7 +15,7 @@ async def send_text(psid: str, text: str, platform: str = "messenger") -> None:
         "recipient": {"id": psid},
         "message": {"text": text},
     }
-    await _post(payload)
+    await _post(payload, platform)
 
 
 async def send_typing_on(psid: str, platform: str = "messenger") -> None:
@@ -23,11 +23,16 @@ async def send_typing_on(psid: str, platform: str = "messenger") -> None:
         "recipient": {"id": psid},
         "sender_action": "typing_on",
     }
-    await _post(payload)
+    await _post(payload, platform)
 
 
-async def _post(payload: dict) -> None:
-    params = {"access_token": settings.meta_page_access_token}
+async def _post(payload: dict, platform: str = "messenger") -> None:
+    token = (
+        settings.meta_ig_access_token
+        if platform == "instagram"
+        else settings.meta_page_access_token
+    )
+    params = {"access_token": token}
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(_GRAPH_URL, params=params, json=payload)
         if resp.status_code != 200:
