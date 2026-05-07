@@ -68,7 +68,7 @@ async def _handle(messaging: dict) -> None:
     text = message.get("text", "")
     logger.info("Mensaje de %s: %s", sender_id, text)
 
-    await _send(sender_id, "respuesta ok")
+    await _send(sender_id, "¡Hola! 🐮 Bienvenid@ a La Cava Lácteos. ¿En qué podemos ayudarte hoy? ♻️")
 
 
 async def _send(psid: str, text: str) -> None:
