@@ -16,8 +16,7 @@ app = FastAPI(title="Cava Lácteos — Instagram test")
 _VERIFY_TOKEN = os.environ["IG_VERIFY_TOKEN"]
 _ACCESS_TOKEN = os.environ["IG_PAGE_ACCESS_TOKEN"]
 _APP_SECRET = os.environ["IG_APP_SECRET"]
-_IG_ACCOUNT_ID = os.environ["IG_ACCOUNT_ID"]
-_GRAPH_URL = f"https://graph.facebook.com/v20.0/{_IG_ACCOUNT_ID}/messages"
+_GRAPH_URL = "https://graph.instagram.com/v21.0/me/messages"
 
 
 # ── Webhook verify ────────────────────────────────────────────────────────────
@@ -77,7 +76,7 @@ async def _send(psid: str, text: str) -> None:
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             _GRAPH_URL,
-            params={"access_token": _ACCESS_TOKEN},
+            headers={"Authorization": f"Bearer {_ACCESS_TOKEN}"},
             json=payload,
         )
         if resp.status_code != 200:
