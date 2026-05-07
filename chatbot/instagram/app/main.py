@@ -16,7 +16,8 @@ app = FastAPI(title="Cava Lácteos — Instagram test")
 _VERIFY_TOKEN = os.environ["IG_VERIFY_TOKEN"]
 _ACCESS_TOKEN = os.environ["IG_PAGE_ACCESS_TOKEN"]
 _APP_SECRET = os.environ["IG_APP_SECRET"]
-_GRAPH_URL = "https://graph.facebook.com/v20.0/me/messages"
+_IG_ACCOUNT_ID = os.environ["IG_ACCOUNT_ID"]
+_GRAPH_URL = f"https://graph.facebook.com/v20.0/{_IG_ACCOUNT_ID}/messages"
 
 
 # ── Webhook verify ────────────────────────────────────────────────────────────
