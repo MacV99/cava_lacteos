@@ -9,7 +9,7 @@ y escribe el resultado en 'cache'. Corre cada 2 horas (APScheduler en main.py).
 """
 import json
 import logging
-import time
+import threading
 
 import gspread
 
@@ -21,42 +21,32 @@ _TAB_CACHE    = "cache"
 _TAB_EMPRESA  = "empresa"
 _TAB_CATALOGO = "catalogo"
 
-_CACHE_TTL = 600  # segundos — relee Sheets como máximo cada 10 min
 _mem_cache: dict = {}
-_mem_cache_ts: float = 0.0
+_cache_lock = threading.Lock()
 
 
 def get_cache() -> dict:
-    """Retorna {'empresa': dict, 'catalogo': str}.
+    """Retorna {'empresa': dict, 'catalogo': str} desde memoria.
 
-    Sirve desde memoria si los datos tienen menos de 10 min; solo lee Sheets cuando expiran.
+    En cold start (primera llamada tras arranque) dispara refresh_cache() para poblar el cache.
+    A partir de ahí solo refresh_cache() actualiza el cache — vía APScheduler (cada 2h)
+    o el endpoint POST /cache/refresh.
     """
-    global _mem_cache, _mem_cache_ts
-    if _mem_cache and time.monotonic() - _mem_cache_ts < _CACHE_TTL:
-        return _mem_cache
-
-    ws = get_spreadsheet().worksheet(_TAB_CACHE)
-    rows = ws.get_all_records()
-    result: dict = {"empresa": {}, "catalogo": ""}
-    for row in rows:
-        clave = str(row.get("clave", "")).strip()
-        valor = str(row.get("valor", "")).strip()
-        if clave == "empresa":
-            try:
-                result["empresa"] = json.loads(valor)
-            except json.JSONDecodeError:
-                result["empresa"] = {}
-        elif clave == "catalogo":
-            result["catalogo"] = valor
-
-    _mem_cache = result
-    _mem_cache_ts = time.monotonic()
-    return result
+    with _cache_lock:
+        if not _mem_cache:
+            _refresh_locked()
+        return dict(_mem_cache)
 
 
 def refresh_cache() -> None:
-    """Lee empresa + catalogo, actualiza la hoja cache e invalida el cache en memoria."""
-    global _mem_cache, _mem_cache_ts
+    """Lee empresa + catalogo, escribe en la hoja cache y actualiza el cache en memoria."""
+    with _cache_lock:
+        _refresh_locked()
+
+
+def _refresh_locked() -> None:
+    """Ejecuta el refresco real. Debe llamarse con _cache_lock ya adquirido."""
+    global _mem_cache
     ss = get_spreadsheet()
     empresa = _read_empresa(ss)
     catalogo_text = _read_catalogo(ss)
@@ -66,7 +56,6 @@ def refresh_cache() -> None:
     _upsert_cache_row(ws_cache, "catalogo", catalogo_text)
 
     _mem_cache = {"empresa": empresa, "catalogo": catalogo_text}
-    _mem_cache_ts = time.monotonic()
     logger.info("Cache actualizado: empresa y catalogo")
 
 

@@ -10,13 +10,10 @@ logger = logging.getLogger(__name__)
 # Singleton compartido — importar desde aquí para no crear instancias duplicadas.
 groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
-# Alias privado por compatibilidad interna
-_groq = groq_client
-
 
 async def chat(messages: list[dict]) -> str:
     """Llama a Groq con los mensajes (system ya incluido) y retorna la respuesta."""
-    response = await _groq.chat.completions.create(
+    response = await groq_client.chat.completions.create(
         model=settings.groq_chat_model,
         messages=messages,
         temperature=0.5,
