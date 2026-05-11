@@ -9,6 +9,7 @@ y escribe el resultado en 'cache'. Corre cada 2 horas (APScheduler en main.py).
 """
 import json
 import logging
+import time
 
 import gspread
 
@@ -20,9 +21,20 @@ _TAB_CACHE    = "cache"
 _TAB_EMPRESA  = "empresa"
 _TAB_CATALOGO = "catalogo"
 
+_CACHE_TTL = 600  # segundos — relee Sheets como máximo cada 10 min
+_mem_cache: dict = {}
+_mem_cache_ts: float = 0.0
+
 
 def get_cache() -> dict:
-    """Retorna {'empresa': dict, 'catalogo': str} desde la hoja cache."""
+    """Retorna {'empresa': dict, 'catalogo': str}.
+
+    Sirve desde memoria si los datos tienen menos de 10 min; solo lee Sheets cuando expiran.
+    """
+    global _mem_cache, _mem_cache_ts
+    if _mem_cache and time.monotonic() - _mem_cache_ts < _CACHE_TTL:
+        return _mem_cache
+
     ws = get_spreadsheet().worksheet(_TAB_CACHE)
     rows = ws.get_all_records()
     result: dict = {"empresa": {}, "catalogo": ""}
@@ -36,11 +48,15 @@ def get_cache() -> dict:
                 result["empresa"] = {}
         elif clave == "catalogo":
             result["catalogo"] = valor
+
+    _mem_cache = result
+    _mem_cache_ts = time.monotonic()
     return result
 
 
 def refresh_cache() -> None:
-    """Lee empresa + catalogo y actualiza la hoja cache. Llamado cada 2h."""
+    """Lee empresa + catalogo, actualiza la hoja cache e invalida el cache en memoria."""
+    global _mem_cache, _mem_cache_ts
     ss = get_spreadsheet()
     empresa = _read_empresa(ss)
     catalogo_text = _read_catalogo(ss)
@@ -48,6 +64,9 @@ def refresh_cache() -> None:
     ws_cache = ss.worksheet(_TAB_CACHE)
     _upsert_cache_row(ws_cache, "empresa", json.dumps(empresa, ensure_ascii=False))
     _upsert_cache_row(ws_cache, "catalogo", catalogo_text)
+
+    _mem_cache = {"empresa": empresa, "catalogo": catalogo_text}
+    _mem_cache_ts = time.monotonic()
     logger.info("Cache actualizado: empresa y catalogo")
 
 

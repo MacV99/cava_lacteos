@@ -3,21 +3,20 @@ import io
 import logging
 
 import httpx
-from groq import AsyncGroq
 
 from app.config import settings
+from app.llm.groq_client import groq_client as _groq
 
 logger = logging.getLogger(__name__)
 
-_groq = AsyncGroq(api_key=settings.groq_api_key)
+_http = httpx.AsyncClient(timeout=30)
 
 
 async def transcribe_url(audio_url: str) -> str:
     """Descarga el audio de la URL y retorna el texto transcrito."""
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(audio_url)
-        resp.raise_for_status()
-        audio_bytes = resp.content
+    resp = await _http.get(audio_url)
+    resp.raise_for_status()
+    audio_bytes = resp.content
 
     file_tuple = ("audio.ogg", io.BytesIO(audio_bytes), "audio/ogg")
     result = await _groq.audio.transcriptions.create(

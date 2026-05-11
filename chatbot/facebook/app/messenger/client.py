@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 _MESSENGER_URL = "https://graph.facebook.com/v20.0/me/messages"
 _INSTAGRAM_URL = "https://graph.instagram.com/v21.0/me/messages"
 
+_http = httpx.AsyncClient(timeout=10)
+
 
 async def send_text(psid: str, text: str, platform: str = "messenger") -> None:
     payload = {
@@ -37,8 +39,7 @@ async def _post(payload: dict, platform: str = "messenger") -> None:
         headers = {}
         params = {"access_token": settings.meta_page_access_token}
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.post(url, params=params, headers=headers, json=payload)
-        if resp.status_code != 200:
-            logger.error("Graph API error %s: %s", resp.status_code, resp.text)
-        resp.raise_for_status()
+    resp = await _http.post(url, params=params, headers=headers, json=payload)
+    if resp.status_code != 200:
+        logger.error("Graph API error %s: %s", resp.status_code, resp.text)
+    resp.raise_for_status()

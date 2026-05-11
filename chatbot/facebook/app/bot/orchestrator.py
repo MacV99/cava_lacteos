@@ -105,7 +105,13 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
 
         existing_buffer.append(message_text)
         await asyncio.to_thread(
-            activity.save_buffer, psid, nombre, existing_buffer, my_timestamp
+            activity.save_buffer,
+            psid,
+            nombre,
+            existing_buffer,
+            my_timestamp,
+            fresh.get("ultima_vez", ""),
+            fresh.get("historial", "[]"),
         )
 
     # Esperar a que lleguen más mensajes del mismo usuario
@@ -247,6 +253,8 @@ def _parse_reply(raw: str) -> tuple[bool, dict | None, str]:
                 "pedido":    match.group(5).strip(),
                 "total":     match.group(6).strip(),
             }
+        else:
+            logger.warning("PEDIDO_CONFIRMADO detectado pero el regex no matcheó. raw=%s", raw[:300])
         # Remover el bloque técnico del texto visible
         visible_text = re.sub(r"PEDIDO_CONFIRMADO[\s\S]*?\n\n", "", raw, count=1).strip()
         if not visible_text:

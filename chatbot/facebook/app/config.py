@@ -6,10 +6,10 @@ class Settings(BaseSettings):
 
     # Meta / Facebook + Instagram
     meta_verify_token: str
-    meta_page_access_token: str = "EAAU3ivFe4TsBRSem7vWYBIS0YmK3SPtFVXZBRzAk1nna2FJYfHr9PJoVgGc0NErz3GLevisoJgunHpxWrCPZAvDhZCzLWMZC4H3Qky2VYAAXc4moP7o9FJooKk6t4m15CazohNQG1S68SlrH0i2jGuYnUShxDEHeLxvMBjD7qZAVclAYMQ1LU2ssAo4sr5LSkN5nB6SuhAtfP1ZBZAQntYaZA1MkbYWb97ZBYLv4Qogph7ZC2ZAlu6K6AaJX72rn19D5BTK5KP03ODQprsq3OGZAjjjj5gZDZD"
+    meta_page_access_token: str
     meta_app_secret: str
     meta_ig_access_token: str = ""
-    meta_ig_app_secret: str = "5331411355a969f01db4125ec8e060bb"
+    meta_ig_app_secret: str = ""
     meta_ig_account_id: str = "17841436769814214"
 
     # Groq

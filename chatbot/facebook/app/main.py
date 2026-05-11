@@ -1,12 +1,15 @@
+import asyncio
 import hashlib
 import hmac
 import logging
+from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 
 from app.config import settings
+from app.sheets.cache import refresh_cache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,24 +17,19 @@ logger = logging.getLogger(__name__)
 _seen_mids: set[str] = set()
 _MAX_SEEN = 2000
 
-app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram)")
-
 _scheduler = AsyncIOScheduler()
 
 
-@app.on_event("startup")
-async def _startup() -> None:
-    from app.sheets.cache import refresh_cache
-
-    # Ejecutar el Cache Updater cada 2 horas (igual que el workflow n8n)
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
     _scheduler.add_job(refresh_cache, "interval", hours=2, id="cache_updater")
     _scheduler.start()
     logger.info("APScheduler iniciado — cache se actualizará cada 2 h")
-
-
-@app.on_event("shutdown")
-async def _shutdown() -> None:
+    yield
     _scheduler.shutdown(wait=False)
+
+
+app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram)", lifespan=_lifespan)
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -44,8 +42,6 @@ async def healthz():
 @app.post("/cache/refresh")
 async def cache_refresh():
     """Fuerza la actualización del cache manualmente (útil para pruebas)."""
-    import asyncio
-    from app.sheets.cache import refresh_cache
     await asyncio.to_thread(refresh_cache)
     return {"status": "ok"}
 

@@ -1,4 +1,4 @@
-"""Wrapper de Groq para chat completions."""
+"""Wrapper de Groq para chat completions. Exporta el cliente singleton `groq_client`."""
 import logging
 
 from groq import AsyncGroq
@@ -7,7 +7,11 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_groq = AsyncGroq(api_key=settings.groq_api_key)
+# Singleton compartido — importar desde aquí para no crear instancias duplicadas.
+groq_client = AsyncGroq(api_key=settings.groq_api_key)
+
+# Alias privado por compatibilidad interna
+_groq = groq_client
 
 
 async def chat(messages: list[dict]) -> str:

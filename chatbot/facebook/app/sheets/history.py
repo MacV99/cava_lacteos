@@ -7,9 +7,13 @@ from app.sheets.client import get_spreadsheet
 MAX_HISTORY_TURNS = 10  # turnos (user + assistant = 1 turno)
 
 
+def _ws():
+    return get_spreadsheet().worksheet(settings.sheet_tab_history)
+
+
 def get_history(psid: str) -> list[dict]:
     """Retorna lista de mensajes [{role, content}, ...] para la llamada al LLM."""
-    ws = get_spreadsheet().worksheet(settings.sheet_tab_history)
+    ws = _ws()
     rows = ws.get_all_records()
     # TODO: ajustar columnas según el Sheet real
     # Se asume: PSID | Rol | Contenido | Timestamp
@@ -23,7 +27,7 @@ def get_history(psid: str) -> list[dict]:
 
 def append_turn(psid: str, role: str, content: str) -> None:
     """Agrega un turno al historial."""
-    ws = get_spreadsheet().worksheet(settings.sheet_tab_history)
+    ws = _ws()
     ws.append_row(
         [psid, role, content, datetime.utcnow().isoformat()],
         value_input_option="USER_ENTERED",

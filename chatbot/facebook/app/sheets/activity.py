@@ -55,27 +55,26 @@ def get_contact(sender_id: str) -> dict:
     }
 
 
-def save_buffer(sender_id: str, nombre: str, buffer: list[str], procesando: str) -> None:
-    """Actualiza (o crea) la fila con el buffer acumulado y el timestamp de procesando."""
+def save_buffer(
+    sender_id: str,
+    nombre: str,
+    buffer: list[str],
+    procesando: str,
+    ultima_vez: str = "",
+    historial_json: str = "[]",
+) -> None:
+    """Actualiza (o crea) la fila con el buffer acumulado y el timestamp de procesando.
+
+    Recibe ultima_vez e historial_json del caller (ya disponibles desde get_contact)
+    para evitar releer la fila desde Sheets.
+    """
     ws = _ws()
     row_num = _find_row(ws, sender_id)
     buffer_json = json.dumps(buffer, ensure_ascii=False)
 
     if row_num is not None:
-        # Preserve ultima_vez and historial; update the rest
-        existing = ws.row_values(row_num)
-        while len(existing) < 7:
-            existing.append("")
         ws.update(
-            [[
-                sender_id,
-                nombre or existing[1],
-                existing[2],   # ultima_vez — sin cambios
-                existing[3],   # historial — sin cambios
-                procesando,
-                buffer_json,
-                "TRUE",
-            ]],
+            [[sender_id, nombre, ultima_vez, historial_json, procesando, buffer_json, "TRUE"]],
             range_name=f"A{row_num}:G{row_num}",
         )
     else:
