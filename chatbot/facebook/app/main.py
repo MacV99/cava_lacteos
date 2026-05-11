@@ -11,6 +11,9 @@ from app.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_seen_mids: set[str] = set()
+_MAX_SEEN = 2000
+
 app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram)")
 
 _scheduler = AsyncIOScheduler()
@@ -79,10 +82,27 @@ async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
     from app.bot.orchestrator import handle_event
 
     for entry in payload.get("entry", []):
+        # Messenger Platform: entry[].messaging[]
         for messaging in entry.get("messaging", []):
-            background_tasks.add_task(handle_event, messaging, platform)
+            _enqueue(messaging, platform, background_tasks, handle_event)
+        # Instagram Graph API: entry[].changes[] con field="messages"
+        for change in entry.get("changes", []):
+            if change.get("field") == "messages":
+                _enqueue(change.get("value", {}), platform, background_tasks, handle_event)
 
     return Response(content="EVENT_RECEIVED", status_code=200)
+
+
+def _enqueue(messaging: dict, platform: str, background_tasks: BackgroundTasks, handle_event) -> None:
+    mid = messaging.get("message", {}).get("mid", "")
+    if mid:
+        if mid in _seen_mids:
+            logger.info("Duplicado ignorado mid=%s", mid)
+            return
+        _seen_mids.add(mid)
+        if len(_seen_mids) > _MAX_SEEN:
+            _seen_mids.clear()
+    background_tasks.add_task(handle_event, messaging, platform)
 
 
 # ── Validación de firma ───────────────────────────────────────────────────────

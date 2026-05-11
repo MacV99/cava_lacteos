@@ -1,4 +1,4 @@
-"""Bot de Instagram mínimo — responde 'respuesta ok' a todo DM."""
+"""Bot de Instagram mínimo — responde a todo DM con deduplicación de mensajes."""
 import hashlib
 import hmac
 import logging
@@ -17,6 +17,11 @@ _VERIFY_TOKEN = os.environ["IG_VERIFY_TOKEN"]
 _ACCESS_TOKEN = os.environ["IG_PAGE_ACCESS_TOKEN"]
 _APP_SECRET = os.environ["IG_APP_SECRET"]
 _GRAPH_URL = "https://graph.instagram.com/v21.0/me/messages"
+
+# Deduplicación: evita responder múltiples veces al mismo mensaje
+# (Meta reintenta entregas fallidas cuando el servicio estuvo caído)
+_seen_mids: set[str] = set()
+_MAX_SEEN = 2000  # límite para no crecer indefinidamente
 
 
 # ── Webhook verify ────────────────────────────────────────────────────────────
@@ -64,6 +69,16 @@ async def _handle(messaging: dict) -> None:
 
     if not sender_id or message.get("is_echo"):
         return
+
+    # Descartar duplicados (reintentos de Meta tras caída del servicio)
+    mid = message.get("mid", "")
+    if mid:
+        if mid in _seen_mids:
+            logger.info("Duplicado ignorado mid=%s", mid)
+            return
+        _seen_mids.add(mid)
+        if len(_seen_mids) > _MAX_SEEN:
+            _seen_mids.clear()
 
     text = message.get("text", "")
     logger.info("Mensaje de %s: %s", sender_id, text)
