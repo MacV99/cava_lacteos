@@ -12,13 +12,12 @@ Workspace multi-proyecto para la empresa **Cava Lácteos**. Cada subcarpeta es u
 cava_lacteos/
 ├── website/          ← Sitio web y catálogo (Astro) — sin inicializar
 ├── chatbot/
-│   ├── facebook/     ← Chatbot Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
-│   ├── instagram/    ← Integrado en facebook/ (mismo deploy, misma Graph API)
+│   ├── meta/         ← Chatbot Facebook Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
 │   └── whatsapp/     ← Pendiente
 └── CLAUDE.md
 ```
 
-Solo `chatbot/facebook/` tiene código. El resto son carpetas vacías.
+Solo `chatbot/meta/` tiene código. El resto son carpetas vacías.
 
 ## Convenciones del workspace
 
@@ -28,9 +27,9 @@ Solo `chatbot/facebook/` tiene código. El resto son carpetas vacías.
 
 ---
 
-# Proyecto: `chatbot/facebook/`
+# Proyecto: `chatbot/meta/`
 
-Bot de Messenger que responde clientes con un LLM (Groq Llama-4-Scout), guarda historial y pedidos en Google Sheets, y replica el workflow original de n8n "CAVA - Messenger".
+Bot de Facebook Messenger e Instagram DMs que responde clientes con un LLM (Groq Llama-4-Scout), guarda historial y pedidos en Google Sheets, y replica el workflow original de n8n "CAVA - Messenger".
 
 ## Stack
 
@@ -43,9 +42,9 @@ Bot de Messenger que responde clientes con un LLM (Groq Llama-4-Scout), guarda h
 ## Comandos
 
 ```bash
-# Setup (desde chatbot/facebook/)
+# Setup (desde chatbot/meta/)
 pip install -r requirements.txt
-cp .env.example .env   # luego rellenar credenciales
+cp .env.example .env  # luego rellenar credenciales
 
 # Correr local
 uvicorn app.main:app --reload
@@ -64,7 +63,7 @@ Render ejecuta: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
 
 ## Arquitectura de alto nivel
 
-El flujo de un mensaje sigue 15 pasos documentados en el docstring de [`app/bot/orchestrator.py`](chatbot/facebook/app/bot/orchestrator.py). Lo crítico para entender el sistema:
+El flujo de un mensaje sigue 15 pasos documentados en el docstring de [`app/bot/orchestrator.py`](chatbot/meta/app/bot/orchestrator.py). Lo crítico para entender el sistema:
 
 ### 1. Buffer debounce (5 s)
 
@@ -90,7 +89,7 @@ Esto permite al cliente enviar varios mensajes seguidos y que el bot los respond
 
 ### 3. System prompt como fuente de verdad
 
-[`app/llm/prompts.py`](chatbot/facebook/app/llm/prompts.py) construye el prompt inyectando:
+[`app/llm/prompts.py`](chatbot/meta/app/llm/prompts.py) construye el prompt inyectando:
 - `empresa` (tono, horario, envíos, métodos de pago, saludo, cierre, etc.).
 - `catalogo` formateado.
 - Reglas de comportamiento, gramática (yogur/yogures), flujo de compra de 4 pasos, y formato del bloque técnico de pedido.
@@ -126,7 +125,7 @@ Si el LLM responde con dos ideas separadas por `|||`, el orchestrator las envía
 
 ### 7. Tiempo en Bogotá
 
-Toda fecha que se escriba en Sheets pasa por [`app/utils/bogota_time.py`](chatbot/facebook/app/utils/bogota_time.py) (`format()` / `parse()`). Formato canónico: `"4/5/2026, 11:23:03 am"`. La implementación es portable (no usa `%-d`/`%-m` que rompen en Windows).
+Toda fecha que se escriba en Sheets pasa por [`app/utils/bogota_time.py`](chatbot/meta/app/utils/bogota_time.py) (`format()` / `parse()`). Formato canónico: `"4/5/2026, 11:23:03 am"`. La implementación es portable (no usa `%-d`/`%-m` que rompen en Windows).
 
 ### 8. Seguridad del webhook
 
@@ -138,6 +137,6 @@ Mientras la app de Meta esté en **Modo Desarrollo / Acceso Estándar**, Messeng
 
 ## Variables de entorno
 
-Definidas en `chatbot/facebook/app/config.py` (Pydantic Settings, lee `.env`). En Render están como `envVars` en `render.yaml`. Las críticas (sync: false): `META_VERIFY_TOKEN`, `META_PAGE_ACCESS_TOKEN`, `META_APP_SECRET`, `GROQ_API_KEY`, `GOOGLE_SHEETS_ID`, `GOOGLE_SA_JSON_B64`.
+Definidas en `chatbot/meta/app/config.py` (Pydantic Settings, lee `.env`). En Render están como `envVars` en `render.yaml`. Las críticas (sync: false): `META_VERIFY_TOKEN`, `META_PAGE_ACCESS_TOKEN`, `META_APP_SECRET`, `GROQ_API_KEY`, `GOOGLE_SHEETS_ID`, `GOOGLE_SA_JSON_B64`.
 
 `GOOGLE_SA_JSON_B64` es el JSON del service account en base64 — alternativa a `credentials/service_account.json` en local.
