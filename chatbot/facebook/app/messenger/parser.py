@@ -1,6 +1,10 @@
 """Normaliza el payload crudo de Messenger / Instagram DMs a un evento interno."""
+import json
+import logging
 from dataclasses import dataclass
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 _IMAGE_TYPES = {"image", "video", "file", "sticker"}
 
@@ -41,6 +45,7 @@ def parse(messaging: dict, platform: str = "messenger") -> "MessengerEvent | Non
             return MessengerEvent(psid=sender, type="audio", attachment_url=url, platform=platform)
         if att_type in _IMAGE_TYPES:
             return MessengerEvent(psid=sender, type="image", platform=platform)
+        logger.warning("Attachment desconocido tipo=%s payload=%s", att_type, json.dumps(att, ensure_ascii=False))
         return MessengerEvent(psid=sender, type="other", platform=platform)
 
     return None
