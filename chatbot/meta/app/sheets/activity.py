@@ -23,9 +23,14 @@ COL_PROCESANDO = 5
 COL_BUFFER     = 6
 COL_ACTIVADO   = 7
 
+_ws_cache: gspread.Worksheet | None = None
+
 
 def _ws() -> gspread.Worksheet:
-    return get_spreadsheet().worksheet(_TAB)
+    global _ws_cache
+    if _ws_cache is None:
+        _ws_cache = get_spreadsheet().worksheet(_TAB)
+    return _ws_cache
 
 
 def _find_row(ws: gspread.Worksheet, sender_id: str) -> int | None:
