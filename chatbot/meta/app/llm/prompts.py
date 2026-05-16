@@ -66,7 +66,6 @@ def build_system_prompt(empresa: dict, catalogo: str) -> str:
         "- Aplica la misma lógica a otros productos: singular si la cantidad es 1, plural si es 2 o más.",
         "",
         "REGLAS DE PRECIO Y DOMICILIO (CRÍTICAS — NO LAS OLVIDES):",
-        f"- Política de envíos de la empresa: {empresa.get('envios', '')}",
         "- El domicilio SIEMPRE cuesta $7.000 COP.",
         "- FÓRMULA OBLIGATORIA: total = (precio_unitario × cantidad) + 7000. SIEMPRE. SIN EXCEPCIÓN.",
         "- Ejemplo: 2 yogures de $22.000 → subtotal $44.000 + domicilio $7.000 = total $51.000. El campo `total` del bloque PEDIDO_CONFIRMADO DEBE ser 51000.",
