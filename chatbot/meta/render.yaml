@@ -23,8 +23,6 @@ services:
         sync: false
       - key: GOOGLE_SA_JSON_B64
         sync: false
-      - key: CATALOG_URL
-        value: https://catalogo-la-cava.netlify.app/
       - key: BUFFER_WAIT_SECONDS
         value: "5"
       - key: HISTORY_MAX_ITEMS

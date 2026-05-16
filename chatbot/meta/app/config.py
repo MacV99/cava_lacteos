@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     google_sa_json_b64: str = ""  # alternativa: JSON en base64 (útil en Render)
 
     # URL del catálogo (incluida en el system prompt)
-    catalog_url: str = "https://catalogo-la-cava.netlify.app/"
+    catalog_url: str = "https://lacavalacteos.com/"
 
     # Comportamiento del bot
     buffer_wait_seconds: int = 5
