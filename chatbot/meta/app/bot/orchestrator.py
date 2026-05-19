@@ -34,7 +34,7 @@ from app.audio.transcribe import transcribe_url
 from app.config import settings
 from app.llm.groq_client import chat
 from app.llm.prompts import build_system_prompt
-from app.messenger.client import send_text, send_typing_on
+from app.messenger.client import send_reaction, send_text, send_typing_on
 from app.messenger.parser import parse
 from app.sheets import activity, cache as sheets_cache, orders
 from app.utils import bogota_time
@@ -64,9 +64,19 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
 
     psid = event.psid
 
+    # Story mention (alguien etiquetó la cuenta en su historia) → solo reacción de corazón
+    if event.type == "story_mention":
+        if event.mid:
+            await _safe_send_reaction(psid, event.mid, platform_name)
+        return
+
     # Imagen / video / sticker / archivo → no soportamos
-    if event.type in ("image", "other"):
+    if event.type == "image":
         await _safe_send(psid, "Por ahora solo puedo leer texto y audios 🙏\nSi tiene alguna pregunta escríbala y con gusto le ayudo.", platform_name)
+        return
+
+    # Tipo de adjunto desconocido → ignorar silenciosamente
+    if event.type == "other":
         return
 
     # Transcribir audio
@@ -276,3 +286,10 @@ async def _safe_send_typing(psid: str, platform: str = "messenger") -> None:
         await send_typing_on(psid, platform)
     except Exception as exc:
         logger.debug("Error enviando typing_on a %s: %s", psid, exc)
+
+
+async def _safe_send_reaction(psid: str, mid: str, platform: str = "instagram") -> None:
+    try:
+        await send_reaction(psid, mid, "love", platform)
+    except Exception as exc:
+        logger.debug("Error enviando reacción a %s mid=%s: %s", psid, mid, exc)

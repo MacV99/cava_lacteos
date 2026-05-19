@@ -29,6 +29,16 @@ async def send_typing_on(psid: str, platform: str = "messenger") -> None:
     await _post(payload, platform)
 
 
+async def send_reaction(psid: str, mid: str, reaction: str = "love", platform: str = "instagram") -> None:
+    """Envía una reacción a un mensaje (ej: corazón ante story mention)."""
+    payload = {
+        "recipient": {"id": psid},
+        "sender_action": "react",
+        "payload": {"reaction": reaction, "message_id": mid},
+    }
+    await _post(payload, platform)
+
+
 async def _post(payload: dict, platform: str = "messenger") -> None:
     if platform == "instagram":
         url = _INSTAGRAM_URL
