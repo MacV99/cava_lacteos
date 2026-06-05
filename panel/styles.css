@@ -1,0 +1,201 @@
+/* ── Tokens — escala de grises (zinc) ──────────────────────────────────────── */
+:root {
+  --c0:   #ffffff;
+  --c50:  #fafafa;
+  --c100: #f4f4f5;
+  --c150: #ececee;
+  --c200: #e4e4e7;
+  --c300: #d4d4d8;
+  --c400: #a1a1aa;
+  --c500: #71717a;
+  --c600: #52525b;
+  --c800: #27272a;
+  --c900: #18181b;
+  --ink:  #09090b;
+
+  --radius: 14px;
+  --shadow-sm: 0 1px 2px rgba(9,9,11,.05);
+  --shadow:    0 4px 24px -6px rgba(9,9,11,.12);
+
+  --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--c100);
+  color: var(--c900);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+.hidden { display: none !important; }
+
+/* ── Vistas ──────────────────────────────────────────────────────────────── */
+.view { display: none; min-height: 100dvh; flex-direction: column; }
+.view--active { display: flex; animation: viewIn .28s ease both; }
+@keyframes viewIn { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: none; } }
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: .85rem;
+  padding: max(.95rem, env(safe-area-inset-top)) 1.15rem .95rem;
+  background: rgba(255,255,255,.82);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--c200);
+}
+.topbar__title { display: flex; align-items: baseline; gap: .55rem; flex: 1; }
+.topbar h1 {
+  font-family: var(--font-display);
+  font-weight: 500; font-size: 1.5rem; letter-spacing: -0.02em; line-height: 1;
+}
+.topbar__count { font-size: .8rem; color: var(--c400); font-weight: 500; }
+
+.logo-dot { display: none; }
+
+.topbar__contact { display: flex; align-items: center; gap: .7rem; flex: 1; min-width: 0; }
+.topbar__contact strong {
+  display: block; font-size: 1rem; font-weight: 600; line-height: 1.2;
+  letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar__contact small { color: var(--c500); font-size: .73rem; font-weight: 500; }
+
+.icon-btn {
+  background: transparent; border: 1px solid var(--c200); color: var(--c800);
+  width: 40px; height: 40px; border-radius: 11px;
+  font-size: 1.15rem; cursor: pointer; flex-shrink: 0;
+  display: grid; place-items: center;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.icon-btn:hover { background: var(--c100); border-color: var(--c300); }
+.icon-btn:active { transform: scale(.94); }
+
+/* ── Búsqueda ────────────────────────────────────────────────────────────── */
+.searchbar { padding: .9rem 1.15rem .6rem; }
+.searchbar input {
+  width: 100%; padding: .7rem 1rem; border: 1px solid var(--c200);
+  border-radius: var(--radius); font-size: .92rem; font-family: var(--font-body);
+  background: var(--c0); color: var(--c900); transition: border-color .15s, box-shadow .15s;
+}
+.searchbar input::placeholder { color: var(--c400); }
+.searchbar input:focus {
+  outline: none; border-color: var(--c900);
+  box-shadow: 0 0 0 3px var(--c150);
+}
+
+/* ── Lista de chats ──────────────────────────────────────────────────────── */
+.chat-list { flex: 1; padding: .35rem .65rem 1rem; }
+.chat-row {
+  display: flex; align-items: center; gap: .85rem;
+  padding: .8rem .7rem; border-radius: var(--radius); cursor: pointer;
+  position: relative; transition: background .15s;
+  animation: rowIn .4s ease both;
+}
+@keyframes rowIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.chat-row:hover { background: var(--c0); box-shadow: var(--shadow-sm); }
+.chat-row + .chat-row::before {
+  content: ""; position: absolute; top: 0; left: 4rem; right: .7rem;
+  border-top: 1px solid var(--c150);
+}
+.chat-row:hover::before, .chat-row:hover + .chat-row::before { border-color: transparent; }
+
+.chat-row__info { flex: 1; min-width: 0; }
+.chat-row__name { font-weight: 600; font-size: .96rem; letter-spacing: -0.01em; }
+.chat-row__preview {
+  color: var(--c500); font-size: .82rem; margin-top: .15rem; font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-row__meta { display: flex; flex-direction: column; align-items: flex-end; gap: .45rem; flex-shrink: 0; }
+.chat-row__time { color: var(--c400); font-size: .7rem; font-weight: 500; }
+
+/* ── Badge de canal (monocromo, se distingue por forma del logo) ───────────── */
+.canal-badge {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--c100); color: var(--c800); border: 1px solid var(--c200);
+}
+.canal-badge svg { width: 19px; height: 19px; }
+.canal-badge--instagram { background: var(--c900); color: var(--c0); border-color: var(--c900); }
+.canal-badge--messenger { background: var(--c0); color: var(--c900); }
+.canal-badge--unknown   { background: var(--c100); color: var(--c400); font-size: .9rem; }
+
+/* el badge del topbar es un poco mayor */
+.topbar__contact .canal-badge { width: 34px; height: 34px; border-radius: 10px; }
+
+/* ── Switch IA (monocromo) ─────────────────────────────────────────────────── */
+.switch { position: relative; display: inline-block; width: 48px; height: 28px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch__slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--c200); border-radius: 999px; transition: background .22s;
+}
+.switch__slider::before {
+  content: ""; position: absolute; height: 22px; width: 22px; left: 3px; top: 3px;
+  background: var(--c0); border-radius: 50%; transition: transform .22s; box-shadow: var(--shadow-sm);
+}
+.switch input:checked + .switch__slider { background: var(--ink); }
+.switch input:checked + .switch__slider::before { transform: translateX(20px); }
+.switch input:disabled + .switch__slider { opacity: .45; cursor: default; }
+
+/* pill de estado IA — monocromo */
+.ai-pill {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .66rem; font-weight: 600; padding: .16rem .5rem .16rem .42rem;
+  border-radius: 999px; letter-spacing: .02em; border: 1px solid var(--c200);
+}
+.ai-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+.ai-pill--on  { background: var(--c900); color: var(--c0); border-color: var(--c900); }
+.ai-pill--on::before  { background: var(--c0); }
+.ai-pill--off { background: var(--c0); color: var(--c400); }
+.ai-pill--off::before { background: var(--c300); }
+
+/* ── Conversación ────────────────────────────────────────────────────────── */
+.conversation {
+  flex: 1; padding: 1.25rem 1.15rem 2rem; display: flex; flex-direction: column; gap: .5rem;
+  overflow-y: auto; background: var(--c100);
+}
+.bubble {
+  max-width: 76%; padding: .6rem .85rem; border-radius: 16px;
+  font-size: .9rem; line-height: 1.4; white-space: pre-wrap; word-break: break-word;
+  animation: rowIn .35s ease both; box-shadow: var(--shadow-sm);
+}
+.bubble--user { align-self: flex-start; background: var(--c0); color: var(--c900); border-bottom-left-radius: 5px; }
+.bubble--bot  { align-self: flex-end; background: var(--ink); color: var(--c50); border-bottom-right-radius: 5px; }
+.bubble__role {
+  display: block; font-size: .6rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; opacity: .55; margin-bottom: .22rem;
+}
+
+/* ── Estados ─────────────────────────────────────────────────────────────── */
+.empty { padding: 3.5rem 1rem; text-align: center; color: var(--c400); font-size: .92rem; }
+
+/* ── Botón instalar ──────────────────────────────────────────────────────── */
+.install-btn {
+  position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--c0); border: 0; padding: .72rem 1.4rem;
+  border-radius: 999px; font-size: .86rem; font-weight: 600; font-family: var(--font-body);
+  box-shadow: var(--shadow); cursor: pointer; transition: transform .15s;
+}
+.install-btn:active { transform: translateX(-50%) scale(.96); }
+
+/* ── Notificación pill ───────────────────────────────────────────────────── */
+#notif-pill {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+  padding: .55rem 1.1rem; border-radius: 999px; font-size: .84rem; font-weight: 600;
+  font-family: var(--font-body); background: var(--ink); color: var(--c0);
+  box-shadow: var(--shadow); transition: opacity .3s ease, transform .3s ease;
+}
+#notif-pill[data-type="err"] { background: var(--c0); color: var(--ink); border: 1px solid var(--c300); }
+
+@media (min-width: 720px) {
+  body { background: var(--c150); }
+  .view { max-width: 560px; margin: 0 auto; background: var(--c100);
+    min-height: 100dvh; border-left: 1px solid var(--c200); border-right: 1px solid var(--c200); }
+}

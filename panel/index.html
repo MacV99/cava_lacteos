@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/img/icon-192.png" />
+  <link rel="apple-touch-icon" href="/img/icon-192.png" />
+
+  <meta name="theme-color" content="#fafafa" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Cava Panel" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/styles.css" />
+  <title>Cava Lácteos — Panel de Chats</title>
+</head>
+<body>
+
+  <!-- ── Vista lista de chats ─────────────────────────────────────────────── -->
+  <section id="view-list" class="view view--active">
+    <header class="topbar">
+      <div class="topbar__title">
+        <h1>Chats</h1>
+        <span id="chat-count" class="topbar__count"></span>
+      </div>
+      <button id="btn-refresh" class="icon-btn" title="Actualizar" aria-label="Actualizar">↻</button>
+    </header>
+
+    <div class="searchbar">
+      <input id="search" type="search" placeholder="Buscar por nombre…" autocomplete="off" />
+    </div>
+
+    <div id="chat-list" class="chat-list">
+      <!-- chats inyectados por JS -->
+    </div>
+
+    <div id="empty" class="empty hidden">No hay chats todavía.</div>
+    <div id="loading" class="empty">Cargando…</div>
+
+    <button id="btn-install" class="install-btn hidden">Instalar app 📲</button>
+  </section>
+
+  <!-- ── Vista conversación ───────────────────────────────────────────────── -->
+  <section id="view-chat" class="view">
+    <header class="topbar">
+      <button id="btn-back" class="icon-btn" aria-label="Volver">←</button>
+      <div class="topbar__contact">
+        <span id="chat-canal" class="canal-badge"></span>
+        <div>
+          <strong id="chat-nombre">—</strong>
+          <small id="chat-ultima"></small>
+        </div>
+      </div>
+      <label class="switch" title="IA activa para este chat">
+        <input type="checkbox" id="chat-toggle" />
+        <span class="switch__slider"></span>
+      </label>
+    </header>
+
+    <div id="conversation" class="conversation"></div>
+  </section>
+
+  <script src="/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(e => console.error('SW error', e));
+      });
+    }
+  </script>
+</body>
+</html>

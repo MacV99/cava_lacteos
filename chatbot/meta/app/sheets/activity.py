@@ -1,7 +1,7 @@
 """Operaciones sobre la hoja 'actividad'.
 
 Columnas (en orden):
-  A: sender_id | B: nombre | C: ultima_vez | D: historial | E: procesando | F: buffer | G: activado
+  A: sender_id | B: nombre | C: ultima_vez | D: historial | E: procesando | F: buffer | G: activado | H: canal
 """
 import json
 import logging
@@ -22,6 +22,7 @@ COL_HISTORIAL  = 4
 COL_PROCESANDO = 5
 COL_BUFFER     = 6
 COL_ACTIVADO   = 7
+COL_CANAL      = 8
 
 _ws_cache: gspread.Worksheet | None = None
 
@@ -46,8 +47,8 @@ def get_contact(sender_id: str) -> dict:
     if row_num is None:
         return {}
     values = ws.row_values(row_num)
-    # Pad to 7 cols
-    while len(values) < 7:
+    # Pad to 8 cols
+    while len(values) < 8:
         values.append("")
     return {
         "sender_id":  values[0],
@@ -57,6 +58,7 @@ def get_contact(sender_id: str) -> dict:
         "procesando": values[4],
         "buffer":     values[5] or "[]",
         "activado":   values[6],
+        "canal":      values[7],
     }
 
 
@@ -67,11 +69,13 @@ def save_buffer(
     procesando: str,
     ultima_vez: str = "",
     historial_json: str = "[]",
+    canal: str = "",
 ) -> None:
     """Actualiza (o crea) la fila con el buffer acumulado y el timestamp de procesando.
 
     Recibe ultima_vez e historial_json del caller (ya disponibles desde get_contact)
-    para evitar releer la fila desde Sheets.
+    para evitar releer la fila desde Sheets. `canal` (messenger/instagram) alimenta el
+    ícono de plataforma del panel admin.
     """
     ws = _ws()
     row_num = _find_row(ws, sender_id)
@@ -79,12 +83,12 @@ def save_buffer(
 
     if row_num is not None:
         ws.update(
-            [[sender_id, nombre, ultima_vez, historial_json, procesando, buffer_json, "TRUE"]],
-            range_name=f"A{row_num}:G{row_num}",
+            [[sender_id, nombre, ultima_vez, historial_json, procesando, buffer_json, "TRUE", canal]],
+            range_name=f"A{row_num}:H{row_num}",
         )
     else:
         ws.append_row(
-            [sender_id, nombre, "", "[]", procesando, buffer_json, "TRUE"],
+            [sender_id, nombre, "", "[]", procesando, buffer_json, "TRUE", canal],
             value_input_option="USER_ENTERED",
         )
 
@@ -94,6 +98,7 @@ def update_after_response(
     nombre: str,
     historial_json: str,
     ultima_vez: str,
+    canal: str = "",
 ) -> None:
     """Después de responder: guarda historial, limpia procesando y buffer."""
     ws = _ws()
@@ -102,8 +107,8 @@ def update_after_response(
         logger.warning("update_after_response: sender_id %s no encontrado", sender_id)
         return
     ws.update(
-        [[sender_id, nombre, ultima_vez, historial_json, "", "[]", "TRUE"]],
-        range_name=f"A{row_num}:G{row_num}",
+        [[sender_id, nombre, ultima_vez, historial_json, "", "[]", "TRUE", canal]],
+        range_name=f"A{row_num}:H{row_num}",
     )
 
 

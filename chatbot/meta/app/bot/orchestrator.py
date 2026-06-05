@@ -34,7 +34,7 @@ from app.audio.transcribe import transcribe_url
 from app.config import settings
 from app.llm.groq_client import chat
 from app.llm.prompts import build_system_prompt
-from app.messenger.client import send_reaction, send_text, send_typing_on
+from app.messenger.client import get_profile_name, send_reaction, send_text, send_typing_on
 from app.messenger.parser import parse
 from app.sheets import activity, cache as sheets_cache, orders
 from app.utils import bogota_time
@@ -122,6 +122,7 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
             my_timestamp,
             fresh.get("ultima_vez", ""),
             fresh.get("historial", "[]"),
+            platform_name,
         )
 
     # Esperar a que lleguen más mensajes del mismo usuario
@@ -137,6 +138,11 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
     buffer: list[str] = _parse_json_list(fresh_contact.get("buffer", "[]"))
     combined_message = "\n".join(buffer) if buffer else "[mensaje vacío]"
     nombre = str(fresh_contact.get("nombre", "")).strip()
+
+    # Si aún no tenemos nombre, traerlo del perfil de Meta (una vez por contacto;
+    # luego queda guardado en la hoja y no se vuelve a consultar).
+    if not nombre:
+        nombre = await get_profile_name(psid, platform_name)
 
     # Determinar si la sesión es nueva
     ultima_vez_str = fresh_contact.get("ultima_vez", "")
@@ -215,6 +221,7 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
             nombre,
             json.dumps(updated_historial, ensure_ascii=False),
             ultima_vez_new,
+            platform_name,
         )
     except Exception as exc:
         logger.error("Error actualizando actividad: %s", exc)
