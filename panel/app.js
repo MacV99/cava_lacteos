@@ -11,12 +11,14 @@ let currentSenderId = null;
 // ── SVG logos de canal ─────────────────────────────────────────────────────────
 const ICON_IG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.05 1.8.25 2.2.42.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.17.4.37 1 .42 2.2.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.05 1.2-.25 1.8-.42 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.17-1 .37-2.2.42-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.05-1.8-.25-2.2-.42-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.17-.4-.37-1-.42-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.05-1.2.25-1.8.42-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.17 1-.37 2.2-.42C8.4 2.2 8.8 2.2 12 2.2zm0 3.2A6.6 6.6 0 1 0 18.6 12 6.6 6.6 0 0 0 12 5.4zm0 10.9A4.3 4.3 0 1 1 16.3 12 4.3 4.3 0 0 1 12 16.3zm6.8-11.1a1.54 1.54 0 1 1-1.54-1.54 1.54 1.54 0 0 1 1.54 1.54z"/></svg>`;
 const ICON_FB = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.21 2 11.4c0 2.96 1.46 5.6 3.75 7.32V22l3.43-1.88c.91.25 1.87.39 2.82.39 5.52 0 10-4.21 10-9.4S17.52 2 12 2zm1.02 12.66l-2.55-2.72-4.97 2.72 5.47-5.8 2.61 2.72 4.91-2.72-5.47 5.8z"/></svg>`;
+const ICON_WA = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm5.8 14.16c-.24.68-1.42 1.31-1.96 1.36-.5.06-1.13.08-1.83-.11-.42-.13-.96-.31-1.65-.6-2.91-1.26-4.81-4.19-4.96-4.39-.14-.2-1.19-1.58-1.19-3.01s.75-2.14 1.02-2.43c.27-.29.58-.36.78-.36l.56.01c.18.01.42-.07.66.5.24.59.82 2.02.89 2.17.07.14.12.31.02.51-.1.2-.15.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.29-.13.57.16.27.72 1.18 1.54 1.91 1.06.94 1.95 1.24 2.23 1.38.27.14.43.12.59-.07.16-.2.68-.79.86-1.06.18-.27.36-.22.61-.13.25.09 1.58.74 1.85.88.27.14.45.2.51.31.07.12.07.66-.17 1.34z"/></svg>`;
 
 function canalInfo(canal) {
   const c = (canal || "").toLowerCase();
   if (c === "instagram") return { cls: "instagram", svg: ICON_IG, label: "Instagram" };
   if (c === "messenger" || c === "page") return { cls: "messenger", svg: ICON_FB, label: "Messenger" };
-  return { cls: "unknown", svg: "?", label: "—" };
+  if (c === "whatsapp") return { cls: "whatsapp", svg: ICON_WA, label: "WhatsApp" };
+  return { cls: "unknown", svg: "", label: "Sin canal" };  // "?" lo pone el CSS (::before)
 }
 
 // ── JSONP (GET a GAS) ──────────────────────────────────────────────────────────
@@ -167,6 +169,33 @@ function toggleAI(senderId, on) {
     });
 }
 
+// ── Renombrar chat (optimista) ───────────────────────────────────────────────────
+function renameChat(senderId) {
+  const c = liveData.find(x => x.sender_id === senderId);
+  if (!c) return;
+  const actual = (c.nombre || "").trim();
+  const raw = prompt("Nombre del cliente:", actual);
+  if (raw === null) return;        // canceló
+  const nuevo = raw.trim();
+  if (nuevo === actual) return;
+
+  const prev = c.nombre;
+  c.nombre = nuevo;                 // memoria
+  writeCache(liveData);            // caché
+  document.getElementById("chat-nombre").textContent = nuevo || "Sin nombre";
+  renderList(document.getElementById("search").value);
+
+  postData({ action: "rename", sender_id: senderId, nombre: nuevo })
+    .then(() => notify("Nombre guardado ✓"))
+    .catch(() => {
+      c.nombre = prev;             // rollback
+      writeCache(liveData);
+      document.getElementById("chat-nombre").textContent = (prev || "").trim() || "Sin nombre";
+      renderList(document.getElementById("search").value);
+      notify("Error al guardar", "err");
+    });
+}
+
 // ── Navegación entre vistas ──────────────────────────────────────────────────────
 function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("view--active"));
@@ -214,6 +243,9 @@ window.addEventListener("beforeinstallprompt", (e) => {
 
 // ── Wiring ──────────────────────────────────────────────────────────────────────────
 document.getElementById("btn-back").addEventListener("click", () => showView("view-list"));
+document.getElementById("chat-nombre").addEventListener("click", () => {
+  if (currentSenderId) renameChat(currentSenderId);
+});
 document.getElementById("btn-refresh").addEventListener("click", loadData);
 document.getElementById("search").addEventListener("input", (e) => renderList(e.target.value));
 document.getElementById("chat-toggle").addEventListener("change", (e) => {

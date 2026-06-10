@@ -62,6 +62,21 @@ function doPost(e) {
       return _json({ ok: false, error: "sender_id no encontrado" });
     }
 
+    if (payload.action === "rename") {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      const ids = sheet.getRange(1, COL.SENDER_ID, sheet.getLastRow(), 1).getValues();
+      const target = String(payload.sender_id);
+      const nombre = String(payload.nombre || "").trim();
+
+      for (let i = 1; i < ids.length; i++) {
+        if (String(ids[i][0]) === target) {
+          sheet.getRange(i + 1, COL.NOMBRE).setValue(nombre);
+          return _json({ ok: true, nombre: nombre });
+        }
+      }
+      return _json({ ok: false, error: "sender_id no encontrado" });
+    }
+
     return _json({ ok: false, error: "accion desconocida" });
   } catch (err) {
     return _json({ ok: false, error: String(err) });

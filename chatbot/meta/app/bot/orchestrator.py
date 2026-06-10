@@ -45,6 +45,11 @@ logger = logging.getLogger(__name__)
 # El lock solo envuelve la lectura-modificación-escritura del buffer (no el sleep de 5 s).
 _buffer_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
+# PSIDs para los que ya intentamos (y falló) traer el nombre de Meta. Evita repetir
+# el round-trip bloqueante a Graph en cada mensaje mientras el acceso siga sin aprobar.
+# Se limpia al reiniciar el proceso (así reintenta tras un deploy / App Review).
+_profile_name_tried: set[str] = set()
+
 _PEDIDO_RE = re.compile(
     r"PEDIDO_CONFIRMADO\r?\n"
     r"nombre:\s*(.+)\r?\n"
@@ -139,10 +144,12 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
     combined_message = "\n".join(buffer) if buffer else "[mensaje vacío]"
     nombre = str(fresh_contact.get("nombre", "")).strip()
 
-    # Si aún no tenemos nombre, traerlo del perfil de Meta (una vez por contacto;
-    # luego queda guardado en la hoja y no se vuelve a consultar).
-    if not nombre:
+    # Si aún no tenemos nombre, traerlo del perfil de Meta. En éxito queda guardado
+    # en la hoja; si falla, marcamos el psid para no reintentar en cada mensaje.
+    if not nombre and psid not in _profile_name_tried:
         nombre = await get_profile_name(psid, platform_name)
+        if not nombre:
+            _profile_name_tried.add(psid)
 
     # Determinar si la sesión es nueva
     ultima_vez_str = fresh_contact.get("ultima_vez", "")
