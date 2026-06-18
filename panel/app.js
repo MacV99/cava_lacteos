@@ -134,6 +134,16 @@ function openChat(senderId) {
   const toggle = document.getElementById("chat-toggle");
   toggle.checked = isOn(c.activado);
 
+  const input = document.getElementById("composer-input");
+  input.value = "";
+  input.style.height = "auto";
+
+  showView("view-chat");
+  renderConversation(c);   // tras showView: la vista ya es visible y el scroll al final funciona
+}
+
+// Pinta el historial del contacto en la vista de conversación y baja el scroll.
+function renderConversation(c) {
   const conv = document.getElementById("conversation");
   const hist = parseHistorial(c.historial);
   conv.innerHTML = hist.length
@@ -143,9 +153,30 @@ function openChat(senderId) {
           <span class="bubble__role">${bot ? "Bot" : "Cliente"}</span>${esc(m.content)}</div>`;
     }).join("")
     : `<div class="empty">Sin historial de conversación.</div>`;
-
-  showView("view-chat");
   conv.scrollTop = conv.scrollHeight;
+}
+
+// ── Responder manualmente (optimista) ─────────────────────────────────────────────
+// Agrega el mensaje al historial como "assistant" y lo envía a Meta vía GAS.
+function sendReply(senderId, text) {
+  const c = liveData.find(x => x.sender_id === senderId);
+  if (!c) return;
+
+  const hist = parseHistorial(c.historial);
+  hist.push({ role: "assistant", content: text });
+  c.historial = JSON.stringify(hist);   // memoria
+  writeCache(liveData);                  // caché
+  renderConversation(c);                 // mostrar de inmediato
+
+  postData({ action: "send", sender_id: senderId, text })
+    .then(() => notify("Enviado ✓"))
+    .catch(() => {
+      hist.pop();                        // rollback
+      c.historial = JSON.stringify(hist);
+      writeCache(liveData);
+      renderConversation(c);
+      notify("No se pudo enviar", "err");
+    });
 }
 
 // ── Toggle IA (optimista) ────────────────────────────────────────────────────────
@@ -250,6 +281,26 @@ document.getElementById("btn-refresh").addEventListener("click", loadData);
 document.getElementById("search").addEventListener("input", (e) => renderList(e.target.value));
 document.getElementById("chat-toggle").addEventListener("change", (e) => {
   if (currentSenderId) toggleAI(currentSenderId, e.target.checked);
+});
+
+// ── Composer: enviar respuesta ────────────────────────────────────────────────────
+const composer = document.getElementById("composer");
+const composerInput = document.getElementById("composer-input");
+composer.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = composerInput.value.trim();
+  if (!text || !currentSenderId) return;
+  composerInput.value = "";
+  composerInput.style.height = "auto";
+  sendReply(currentSenderId, text);
+});
+composerInput.addEventListener("keydown", (e) => {
+  // Enter envía; Shift+Enter hace salto de línea.
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); composer.requestSubmit(); }
+});
+composerInput.addEventListener("input", () => {
+  composerInput.style.height = "auto";
+  composerInput.style.height = Math.min(composerInput.scrollHeight, 128) + "px";
 });
 document.getElementById("btn-install").addEventListener("click", async () => {
   if (!deferredPrompt) return;

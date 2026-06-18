@@ -11,6 +11,13 @@
  * "Administrar implementaciones" → editar → Nueva versión). La URL no cambia
  * si editas la implementación existente.
  *
+ * RESPONDER DESDE EL PANEL (acción "send"): GAS envía el mensaje a Meta con
+ * UrlFetchApp. Requiere guardar los tokens en Propiedades del script:
+ *   Configuración del proyecto → Propiedades del script → agregar:
+ *     META_PAGE_ACCESS_TOKEN  (token de la Página — Messenger)
+ *     META_IG_ACCESS_TOKEN    (token de Instagram — DMs de IG)
+ * Son los mismos valores que el bot usa en Render.
+ *
  * Hoja leída/escrita: "actividad"
  * Columnas: A sender_id | B nombre | C ultima_vez | D historial | E procesando | F buffer | G activado | H canal
  */
@@ -77,10 +84,77 @@ function doPost(e) {
       return _json({ ok: false, error: "sender_id no encontrado" });
     }
 
+    if (payload.action === "send") {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      const target = String(payload.sender_id);
+      const text = String(payload.text || "").trim();
+      if (!text) return _json({ ok: false, error: "texto vacío" });
+
+      const lastRow = sheet.getLastRow();
+      const data = sheet.getRange(1, 1, lastRow, COL.CANAL).getValues();
+      for (let i = 1; i < data.length; i++) { // i=1 → saltar encabezado
+        if (String(data[i][COL.SENDER_ID - 1]) === target) {
+          const canal = data[i][COL.CANAL - 1];
+          sendToMeta(canal, target, text); // lanza excepción si Meta falla
+
+          // Registrar el mensaje en el historial como "assistant".
+          let hist;
+          try { hist = JSON.parse(data[i][COL.HISTORIAL - 1] || "[]"); if (!Array.isArray(hist)) hist = []; }
+          catch (e) { hist = []; }
+          hist.push({ role: "assistant", content: text });
+          sheet.getRange(i + 1, COL.HISTORIAL).setValue(JSON.stringify(hist));
+
+          return _json({ ok: true });
+        }
+      }
+      return _json({ ok: false, error: "sender_id no encontrado" });
+    }
+
     return _json({ ok: false, error: "accion desconocida" });
   } catch (err) {
     return _json({ ok: false, error: String(err) });
   }
+}
+
+// ── Envío a Meta (Messenger / Instagram) — espeja app/messenger/client.py ─────────
+function sendToMeta(canal, psid, text) {
+  const props = PropertiesService.getScriptProperties();
+  const c = String(canal || "").toLowerCase();
+  // tag HUMAN_AGENT → ventana de respuesta de 7 días (en vez de 24 h) para agentes humanos.
+  const payload = {
+    recipient: { id: psid },
+    messaging_type: "MESSAGE_TAG",
+    tag: "HUMAN_AGENT",
+    message: { text: text },
+  };
+  let url, options;
+
+  if (c === "instagram") {
+    const igToken = props.getProperty("META_IG_ACCESS_TOKEN");
+    if (!igToken) throw new Error("Falta META_IG_ACCESS_TOKEN en Propiedades del script");
+    url = "https://graph.instagram.com/v21.0/me/messages";
+    options = {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + igToken },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    };
+  } else {
+    const pageToken = props.getProperty("META_PAGE_ACCESS_TOKEN");
+    if (!pageToken) throw new Error("Falta META_PAGE_ACCESS_TOKEN en Propiedades del script");
+    url = "https://graph.facebook.com/v20.0/me/messages?access_token=" + encodeURIComponent(pageToken);
+    options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    };
+  }
+
+  const resp = UrlFetchApp.fetch(url, options);
+  const code = resp.getResponseCode();
+  if (code !== 200) throw new Error("Meta " + code + ": " + resp.getContentText());
 }
 
 function _json(obj) {
