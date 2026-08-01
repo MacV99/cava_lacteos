@@ -13,18 +13,31 @@ services:
         sync: false
       - key: META_IG_ACCESS_TOKEN
         sync: false
-      - key: WHATSAPP_GATEWAY_URL
+      # ── WhatsApp Cloud API (canal oficial, mismo servicio) ──────────────────
+      - key: META_TOKEN
         sync: false
-      - key: WHATSAPP_SHARED_SECRET
+      - key: PHONE_NUMBER_ID
         sync: false
-      - key: PANEL_ORIGIN
+      - key: WABA_ID
         sync: false
-      - key: PANEL_TOKEN
+      - key: GRAPH_VERSION
+        value: v25.0
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      # ── Persistencia del panel (Supabase de La Cava) ────────────────────────
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # ── Panel admin (UI en / + rutas /api/*) ────────────────────────────────
+      - key: PANEL_PASSWORD
         sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_CHAT_MODEL
-        value: meta-llama/llama-4-scout-17b-16e-instruct
+        value: llama-3.3-70b-versatile
       - key: GROQ_WHISPER_MODEL
         value: whisper-large-v3
       - key: GOOGLE_SHEETS_ID

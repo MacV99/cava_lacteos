@@ -12,40 +12,45 @@ Workspace multi-proyecto para la empresa **Cava Lácteos**. Cada subcarpeta es u
 cava_lacteos/
 ├── website/              ← Sitio web y catálogo (Astro) — sin inicializar
 ├── chatbot/
-│   ├── meta/             ← Cerebro: Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
-│   ├── whatsapp-cloud/   ← Canal WhatsApp OFICIAL (Cloud API, Node/Express): panel unificado 3 canales
-│   │                        + persistencia Supabase + gateway de IA hacia meta/. Falta deploy Render.
-│   └── whatsapp/         ← Gateway Baileys (WhatsApp no oficial, QR) — LEGACY/retirado, reemplazado por whatsapp-cloud
+│   ├── meta/             ← SERVICIO ÚNICO: cerebro (Messenger + Instagram + WhatsApp Cloud)
+│   │                        + panel unificado + Supabase, todo en un FastAPI. EN PRODUCCIÓN (Render)
+│   ├── whatsapp-cloud/   ← Panel WhatsApp Node/Express — RETIRADO, portado dentro de meta/ (referencia)
+│   └── whatsapp/         ← Gateway Baileys (WhatsApp no oficial, QR) — LEGACY/retirado
 └── CLAUDE.md
 ```
 
-`website/` sigue vacío. `chatbot/meta/` es el cerebro (lógica de negocio, LLM, Sheets).
-`chatbot/whatsapp-cloud/` es el canal WhatsApp real hoy (API oficial) y hace de gateway
-de IA hacia el cerebro. `chatbot/whatsapp/` (Baileys) quedó **retirado** — no usarlo.
+`website/` sigue vacío. `chatbot/meta/` es **un solo servicio** que hace todo: el cerebro
+(lógica, LLM, Sheets), recibe el webhook oficial de WhatsApp Cloud, envía por Graph API, y
+sirve el **panel** de los 3 canales con persistencia en Supabase. `chatbot/whatsapp-cloud/`
+(Node) y `chatbot/whatsapp/` (Baileys) quedaron **retirados** — no desplegar. Se consolidó
+en Python para caber en el free tier de Render (1 servicio ≈720 h/mes < 750 h) con un solo
+cronjob de keep-alive.
 
-### WhatsApp como canal (no un proyecto aparte)
+### WhatsApp como canal (todo dentro de meta/)
 
 WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Instagram, con
-**el mismo `handle_event`** del bot Python. El transporte lo hace `chatbot/whatsapp-cloud/`
-(WhatsApp Cloud API oficial), que además es un **panel manual** de los 3 canales. Ese panel
-juega el rol de "gateway" del bot (mismo contrato HTTP que tenía el viejo Baileys):
+**el mismo `handle_event`**. Antes el transporte + panel vivían en un servicio Node aparte
+(`whatsapp-cloud/`); se **portaron dentro de `meta/`** para tener un único servicio:
 
-- **Entrada (IA on):** el webhook oficial del panel recibe el mensaje, lo guarda en Supabase
-  y —si `ai_on` está activo para ese chat— reenvía `{jid, phone, name, text, mid}` +
-  `X-Gateway-Secret` a `POST /webhook/whatsapp` (en `chatbot/meta/app/main.py`). El bot
-  sintetiza el shape de Messenger y corre el **mismo** `handle_event` con `platform="whatsapp"`.
-  (`chatbot/whatsapp-cloud/src/bridge.js`).
-- **Salida:** el bot llama `app.whatsapp.gateway.send_text` → `POST {WHATSAPP_GATEWAY_URL}/send`,
-  que ahora es el `POST /send` del panel: envía por Graph API oficial y guarda el saliente en
-  Supabase (aparece en el panel). La capa de envío (`app/messenger/client.py`) ramifica por
-  `platform`; el orchestrator no cambió. **El bot no tuvo cambios de código, solo config.**
+- **Entrada:** el mismo `POST /webhook` (firma `X-Hub-Signature-256`) recibe `object ==
+  "whatsapp_business_account"`, lo procesa `app/whatsapp/handler.py` (guarda el entrante en
+  el store del panel/Supabase) y —si `ai_on` está activo para ese chat— corre el **mismo**
+  `handle_event` con `platform="whatsapp"` en background.
+- **Salida:** el bot llama `app.whatsapp.gateway.send_text`, que ahora envía por la **Graph
+  API oficial directo** (`app/whatsapp/graph.py`) y guarda el saliente en el store (aparece en
+  el panel). `app/messenger/client.py` ramifica por `platform`; el orchestrator no cambió.
+- **Panel:** FastAPI sirve la UI estática en `/` (`meta/public/`) y las rutas `/api/*`
+  (`app/panel/routes.py`) — conversaciones, envío manual, media, bloqueo, renombrar. Login por
+  cookie firmada (`app/panel/auth.py`, `PANEL_PASSWORD`).
 - **Toggle IA por chat:** columna `ai_on` (default true) en la tabla `conversations` de Supabase;
-  el panel la cambia con `POST /api/ai-toggle`. Off → WhatsApp 100% manual. v1 = **solo texto**.
-- **Config:** panel = `GATEWAY_SECRET` + `BOT_WEBHOOK_URL`; bot = `WHATSAPP_GATEWAY_URL` (URL del
-  panel) + `WHATSAPP_SHARED_SECRET` (= `GATEWAY_SECRET`). Ver `chatbot/whatsapp-cloud/README.md`.
-- **Persistencia del panel:** conversaciones en **Supabase** (cuenta de La Cava), no en Sheets.
-  El cerebro (bot Python) sigue guardando su estado de WhatsApp en Sheets (`actividad`, columna
-  `canal='whatsapp'`) igual que Messenger/IG — dos almacenes distintos por ahora.
+  el panel la cambia con `POST /api/ai-toggle`. Off → WhatsApp 100% manual. v1 IA = **solo texto**
+  (media entra al panel pero no se manda al LLM; notas de voz salientes: sin ffmpeg, pendiente).
+- **Persistencia del panel:** conversaciones en **Supabase** (`app/whatsapp/store.py`, vía
+  PostgREST con httpx; sin `SUPABASE_URL` cae a JSON local). El cerebro sigue guardando su estado
+  de WhatsApp en Sheets (`actividad`, `canal='whatsapp'`) — dos almacenes distintos por ahora.
+- **Keep-alive:** free tier duerme el servicio a los ~15 min. Un pinger externo gratuito
+  (cron-job.org / UptimeRobot) a `GET /healthz` cada ~10 min lo mantiene despierto. Render Cron
+  Jobs es de pago; por eso el pinger externo.
 
 ## Convenciones del workspace
 
@@ -62,7 +67,7 @@ Bot de Facebook Messenger e Instagram DMs que responde clientes con un LLM (Groq
 ## Stack
 
 - **FastAPI + Uvicorn** — webhook HTTP en `/webhook`.
-- **Groq** — chat (`meta-llama/llama-4-scout-17b-16e-instruct`) y Whisper para transcribir audios.
+- **Groq** — chat (`llama-3.3-70b-versatile`) y Whisper (`whisper-large-v3`) para transcribir audios.
 - **Google Sheets como base de datos** — vía `gspread` con service account.
 - **APScheduler** — refresca cache cada 2 horas.
 - **Render** — host de producción (ver `render.yaml`).
@@ -77,7 +82,7 @@ cp .env.example .env  # luego rellenar credenciales
 # Correr local
 uvicorn app.main:app --reload
 
-# Tests (la carpeta tests/ está vacía por ahora)
+# Tests (pytest, sin red: capa WhatsApp/panel — handler, store, auth, errores, rutas)
 pytest
 
 # Endpoints útiles

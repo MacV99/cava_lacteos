@@ -3,14 +3,19 @@ import hashlib
 import hmac
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
+from app.panel import auth
+from app.panel.routes import router as panel_router
 from app.sheets.cache import refresh_cache
+from app.whatsapp import store
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,9 +25,12 @@ _MAX_SEEN = 2000
 
 _scheduler = AsyncIOScheduler()
 
+_PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
+    await store.load_all()
     _scheduler.add_job(refresh_cache, "interval", hours=2, id="cache_updater")
     _scheduler.start()
     logger.info("APScheduler iniciado — cache se actualizará cada 2 h")
@@ -30,9 +38,9 @@ async def _lifespan(app: FastAPI):
     _scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram + WhatsApp)", lifespan=_lifespan)
+app = FastAPI(title="Cava Lácteos — Chatbot + Panel (WhatsApp Cloud / Messenger / Instagram)", lifespan=_lifespan)
 
-# CORS para que el panel estático consuma /connections* desde otro origen.
+# CORS (el panel se sirve same-origin; se deja abierto por si se consume desde otro origen).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.panel_origin] if settings.panel_origin != "*" else ["*"],
@@ -41,14 +49,16 @@ app.add_middleware(
 )
 
 
-def _check_panel_token(request: Request) -> None:
-    """Si PANEL_TOKEN está definido, exige el header X-Panel-Token en /connections*."""
-    if settings.panel_token and request.headers.get("x-panel-token", "") != settings.panel_token:
-        raise HTTPException(status_code=403, detail="Panel token inválido")
+# ── Guard de sesión del panel: protege /api/* (los datos), salvo login/logout/me ──
+@app.middleware("http")
+async def _panel_auth_guard(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/") and path not in auth.AUTH_PUBLIC and not auth.is_authed(request):
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    return await call_next(request)
 
 
-# ── Endpoints ────────────────────────────────────────────────────────────────
-
+# ── Endpoints base ─────────────────────────────────────────────────────────────
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
@@ -61,14 +71,17 @@ async def cache_refresh():
     return {"status": "ok"}
 
 
+# ── Webhook: verificación (GET) — Messenger, Instagram y WhatsApp comparten URL ──
 @app.get("/webhook")
 async def webhook_verify(
-    hub_mode: str | None = None,
-    hub_verify_token: str | None = None,
-    hub_challenge: str | None = None,
+    hub_mode: str | None = Query(None, alias="hub.mode"),
+    hub_verify_token: str | None = Query(None, alias="hub.verify_token"),
+    hub_challenge: str | None = Query(None, alias="hub.challenge"),
 ):
-    """Meta llama este endpoint al registrar el webhook."""
-    if hub_mode == "subscribe" and hub_verify_token == settings.meta_verify_token:
+    valid_tokens = {settings.meta_verify_token}
+    if settings.whatsapp_verify_token:
+        valid_tokens.add(settings.whatsapp_verify_token)
+    if hub_mode == "subscribe" and hub_verify_token in valid_tokens:
         logger.info("Webhook verificado por Meta")
         return PlainTextResponse(hub_challenge or "")
     raise HTTPException(status_code=403, detail="Verificación fallida")
@@ -76,17 +89,27 @@ async def webhook_verify(
 
 @app.post("/webhook")
 async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
-    """Recibe eventos de Messenger e Instagram DMs.
+    """Recibe eventos de Messenger, Instagram DMs y WhatsApp Cloud.
 
-    Responde 200 inmediatamente (Meta tiene timeout de 20 s) y procesa
-    en background para no bloquear la respuesta con el wait de 5 s del debounce.
+    Responde 200 inmediato (Meta tiene timeout de 20 s) y procesa en background para
+    no bloquear con el debounce de 5 s del bot.
     """
+    import json as _json
+
     raw_body = await request.body()
-    _verify_signature(request, raw_body)
+    try:
+        payload = _json.loads(raw_body)
+    except Exception:
+        payload = {}
+    platform = payload.get("object")  # "page" | "instagram" | "whatsapp_business_account"
 
-    payload = await request.json()
+    _verify_signature(request, raw_body, platform)
 
-    platform = payload.get("object")  # "page" (Messenger) o "instagram"
+    if platform == "whatsapp_business_account":
+        from app.whatsapp.handler import handle_webhook_body
+        await handle_webhook_body(payload, background_tasks)
+        return Response(content="EVENT_RECEIVED", status_code=200)
+
     if platform not in ("page", "instagram"):
         return Response(status_code=200)
 
@@ -104,82 +127,6 @@ async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
     return Response(content="EVENT_RECEIVED", status_code=200)
 
 
-@app.get("/connections")
-async def connections_status(request: Request):
-    """Estado de conexión de los 3 canales para el panel admin.
-
-    whatsapp: {status, phone} desde el gateway Baileys.
-    messenger / instagram: {status, name?} según validez del token de Meta.
-    """
-    _check_panel_token(request)
-    from app.messenger.client import check_connection
-    from app.whatsapp import gateway as wa_gateway
-
-    wa = await wa_gateway.get_status()
-    messenger = await check_connection("messenger")
-    instagram = await check_connection("instagram")
-    return {"whatsapp": wa, "messenger": messenger, "instagram": instagram}
-
-
-@app.get("/connections/whatsapp/qr")
-async def connections_whatsapp_qr(request: Request):
-    """QR (data URL) para vincular WhatsApp, vía gateway."""
-    _check_panel_token(request)
-    from app.whatsapp import gateway as wa_gateway
-    return await wa_gateway.get_qr()
-
-
-@app.post("/connections/whatsapp/disconnect")
-async def connections_whatsapp_disconnect(request: Request):
-    """Cierra la sesión de WhatsApp (regenera QR)."""
-    _check_panel_token(request)
-    from app.whatsapp import gateway as wa_gateway
-    ok = await wa_gateway.disconnect()
-    return {"ok": ok}
-
-
-@app.post("/webhook/whatsapp")
-async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
-    """Recibe mensajes de texto reenviados por el gateway Baileys (servicio Node).
-
-    El gateway ya normalizó el evento a: { jid, phone, name, text, mid }.
-    Aquí se autentica con el secreto compartido, se sintetiza el shape que espera
-    `parse()` (igual que Messenger) y se procesa con el MISMO orchestrator.
-    Responde 200 rápido; el trabajo real (buffer 5 s + LLM) va a background.
-    """
-    from app.bot.orchestrator import handle_event
-    from app.whatsapp import gateway as wa_gateway
-
-    secret = request.headers.get("x-gateway-secret", "")
-    if not settings.whatsapp_shared_secret or secret != settings.whatsapp_shared_secret:
-        raise HTTPException(status_code=403, detail="Secreto inválido")
-
-    payload = await request.json()
-    jid = str(payload.get("jid", "")).strip()
-    text = str(payload.get("text", "")).strip()
-    if not jid or not text:
-        return Response(status_code=200)
-
-    mid = str(payload.get("mid", "")).strip()
-    if mid:
-        if mid in _seen_mids:
-            logger.info("WA duplicado ignorado mid=%s", mid)
-            return Response(status_code=200)
-        _seen_mids.add(mid)
-        if len(_seen_mids) > _MAX_SEEN:
-            _seen_mids.clear()
-
-    # El pushName no viene de ninguna API: lo cacheamos para que el orchestrator
-    # lo recupere vía get_profile_name(jid, "whatsapp").
-    wa_gateway.remember_pushname(jid, payload.get("name"))
-
-    # Shape compatible con parser.parse() (usa sender.id como psid = jid).
-    messaging = {"sender": {"id": jid}, "message": {"text": text, "mid": mid or None}}
-    background_tasks.add_task(handle_event, messaging, "whatsapp")
-
-    return Response(content="EVENT_RECEIVED", status_code=200)
-
-
 def _enqueue(messaging: dict, platform: str, background_tasks: BackgroundTasks, handle_event) -> None:
     mid = messaging.get("message", {}).get("mid", "")
     if mid:
@@ -193,18 +140,28 @@ def _enqueue(messaging: dict, platform: str, background_tasks: BackgroundTasks, 
 
 
 # ── Validación de firma ───────────────────────────────────────────────────────
+def _verify_signature(request: Request, body: bytes, platform: str | None = None) -> None:
+    """Valida X-Hub-Signature-256 (Messenger, Instagram y WhatsApp usan el mismo esquema).
 
-def _verify_signature(request: Request, body: bytes) -> None:
-    """Valida X-Hub-Signature-256 enviada por Meta (Messenger o Instagram)."""
+    WhatsApp puede venir de otra app Meta (distinta a la de Messenger). Si no configuras
+    `WHATSAPP_APP_SECRET`, su firma NO se verifica (comportamiento del panel Node viejo,
+    útil para pruebas). Setéalo en producción para cerrar el webhook. Messenger/IG siempre
+    se verifican con `META_APP_SECRET`.
+    """
+    if platform == "whatsapp_business_account":
+        if not settings.whatsapp_app_secret:
+            logger.warning("WhatsApp: sin WHATSAPP_APP_SECRET → firma NO verificada (setéalo en prod)")
+            return
+        secrets = [settings.whatsapp_app_secret]
+    else:
+        secrets = [settings.meta_app_secret]
+        if settings.meta_ig_app_secret:
+            secrets.append(settings.meta_ig_app_secret)
+
     signature_header = request.headers.get("x-hub-signature-256", "")
     if not signature_header.startswith("sha256="):
         raise HTTPException(status_code=403, detail="Firma ausente")
-
     received = signature_header.removeprefix("sha256=")
-
-    secrets = [settings.meta_app_secret]
-    if settings.meta_ig_app_secret:
-        secrets.append(settings.meta_ig_app_secret)
 
     for secret in secrets:
         expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
@@ -212,3 +169,9 @@ def _verify_signature(request: Request, body: bytes) -> None:
             return
 
     raise HTTPException(status_code=403, detail="Firma inválida")
+
+
+# ── Panel: rutas /api/* + UI estática ─────────────────────────────────────────
+app.include_router(panel_router)
+# El mount de estáticos va AL FINAL: las rutas explícitas (/api, /webhook…) ganan.
+app.mount("/", StaticFiles(directory=str(_PUBLIC_DIR), html=True), name="panel")

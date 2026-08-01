@@ -14,16 +14,27 @@ class Settings(BaseSettings):
 
     # Groq
     groq_api_key: str
-    groq_chat_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    groq_chat_model: str = "llama-3.3-70b-versatile"
     groq_whisper_model: str = "whisper-large-v3"
 
-    # WhatsApp (gateway Baileys — servicio Node aparte)
-    whatsapp_gateway_url: str = ""      # ej. http://localhost:8100 (local) o URL interna en Render
-    whatsapp_shared_secret: str = ""    # secreto compartido Python <-> gateway (header X-Gateway-Secret)
+    # ── WhatsApp Cloud API (canal oficial) ────────────────────────────────────
+    # Antes vivían en el servicio Node aparte (whatsapp-cloud). Ahora el mismo
+    # FastAPI recibe el webhook oficial y envía por Graph API directo.
+    meta_token: str = ""                 # token System User permanente del número
+    phone_number_id: str = ""            # ID largo del número (NO el +57 300...)
+    waba_id: str = ""
+    graph_version: str = "v25.0"
+    whatsapp_verify_token: str = ""      # si vacío, el webhook usa meta_verify_token
+    whatsapp_app_secret: str = ""        # si la WABA vive en otra app Meta; si vacío, usa meta_app_secret
 
-    # Panel admin (gestión de conexiones desde el panel estático)
-    panel_origin: str = "*"             # CORS: origen del panel (ej. https://panel.tu-dominio.com). "*" = abierto
-    panel_token: str = ""               # si se define, /connections* exige header X-Panel-Token
+    # ── Persistencia del panel (Supabase de La Cava) ──────────────────────────
+    # Si ambas están, el store persiste en Postgres; si faltan, cae a JSON local.
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+
+    # ── Panel admin ───────────────────────────────────────────────────────────
+    panel_password: str = ""            # login del panel (vacío = panel abierto, solo dev)
+    panel_origin: str = "*"             # CORS: origen del panel. "*" = abierto
 
     # Google Sheets
     google_sheets_id: str
