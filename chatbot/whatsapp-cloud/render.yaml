@@ -1,0 +1,35 @@
+# Deploy del panel WhatsApp Cloud (Node/Express) en Render.
+# Servicio autónomo: recibe el webhook oficial de WhatsApp, sirve el panel y persiste en Supabase.
+services:
+  - type: web
+    name: cava-whatsapp-cloud
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      # ── Meta / WhatsApp Cloud API ──────────────────────────────────────────
+      - key: META_TOKEN            # token permanente (System User) del número real
+        sync: false
+      - key: PHONE_NUMBER_ID       # ID largo del número (NO el +1 555...)
+        sync: false
+      - key: WABA_ID
+        sync: false
+      - key: VERIFY_TOKEN          # el mismo string va en el webhook de Meta
+        sync: false
+      - key: GRAPH_VERSION
+        value: v25.0
+      # ── Panel ──────────────────────────────────────────────────────────────
+      - key: PANEL_PASSWORD        # clave de login del panel (NO dejar vacío en prod)
+        sync: false
+      # ── Persistencia (Supabase de La Cava) ─────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY   # service_role — secreta, solo backend
+        sync: false
+      # ── Puente IA hacia el bot Python (Messenger/IG) ───────────────────────
+      - key: GATEWAY_SECRET        # MISMO valor que WHATSAPP_SHARED_SECRET del bot
+        sync: false
+      - key: BOT_WEBHOOK_URL       # https://<bot-meta>.onrender.com/webhook/whatsapp
+        sync: false
