@@ -10,31 +10,42 @@ Workspace multi-proyecto para la empresa **Cava Lácteos**. Cada subcarpeta es u
 
 ```
 cava_lacteos/
-├── website/          ← Sitio web y catálogo (Astro) — sin inicializar
+├── website/              ← Sitio web y catálogo (Astro) — sin inicializar
 ├── chatbot/
-│   ├── meta/         ← Chatbot Facebook Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
-│   └── whatsapp/     ← Gateway Baileys (Node) — nuevo canal WhatsApp que enlaza con el bot de meta/ por HTTP
+│   ├── meta/             ← Cerebro: Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
+│   ├── whatsapp-cloud/   ← Canal WhatsApp OFICIAL (Cloud API, Node/Express): panel unificado 3 canales
+│   │                        + persistencia Supabase + gateway de IA hacia meta/. Falta deploy Render.
+│   └── whatsapp/         ← Gateway Baileys (WhatsApp no oficial, QR) — LEGACY/retirado, reemplazado por whatsapp-cloud
 └── CLAUDE.md
 ```
 
-`website/` sigue vacío. `chatbot/meta/` es el cerebro (lógica de negocio, LLM, Sheets);
-`chatbot/whatsapp/` es solo transporte Baileys que reutiliza ese cerebro por HTTP.
+`website/` sigue vacío. `chatbot/meta/` es el cerebro (lógica de negocio, LLM, Sheets).
+`chatbot/whatsapp-cloud/` es el canal WhatsApp real hoy (API oficial) y hace de gateway
+de IA hacia el cerebro. `chatbot/whatsapp/` (Baileys) quedó **retirado** — no usarlo.
 
 ### WhatsApp como canal (no un proyecto aparte)
 
-WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Instagram.
-El gateway Node (`chatbot/whatsapp/`) conecta WhatsApp por QR con Baileys y hace de
-puente HTTP con el bot Python:
+WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Instagram, con
+**el mismo `handle_event`** del bot Python. El transporte lo hace `chatbot/whatsapp-cloud/`
+(WhatsApp Cloud API oficial), que además es un **panel manual** de los 3 canales. Ese panel
+juega el rol de "gateway" del bot (mismo contrato HTTP que tenía el viejo Baileys):
 
-- **Entrada:** gateway → `POST /webhook/whatsapp` (en `chatbot/meta/app/main.py`) con
-  `{jid, phone, name, text, mid}` + header `X-Gateway-Secret`. El bot sintetiza el shape
-  de Messenger y corre el **mismo** `handle_event` con `platform="whatsapp"`.
-- **Salida:** el bot llama `app.whatsapp.gateway.send_text` → `POST {WHATSAPP_GATEWAY_URL}/send`.
-- La capa de envío (`app/messenger/client.py`) ramifica por `platform`: `whatsapp` delega
-  en el gateway; Messenger/Instagram siguen yendo a la Graph API. El orchestrator no cambió.
-- En Sheets, la columna `canal` guarda `whatsapp` igual que `messenger`/`instagram`.
-- Vars nuevas del bot: `WHATSAPP_GATEWAY_URL`, `WHATSAPP_SHARED_SECRET` (= `GATEWAY_SECRET`
-  del gateway). Ver `chatbot/whatsapp/README.md`. v1 = solo texto.
+- **Entrada (IA on):** el webhook oficial del panel recibe el mensaje, lo guarda en Supabase
+  y —si `ai_on` está activo para ese chat— reenvía `{jid, phone, name, text, mid}` +
+  `X-Gateway-Secret` a `POST /webhook/whatsapp` (en `chatbot/meta/app/main.py`). El bot
+  sintetiza el shape de Messenger y corre el **mismo** `handle_event` con `platform="whatsapp"`.
+  (`chatbot/whatsapp-cloud/src/bridge.js`).
+- **Salida:** el bot llama `app.whatsapp.gateway.send_text` → `POST {WHATSAPP_GATEWAY_URL}/send`,
+  que ahora es el `POST /send` del panel: envía por Graph API oficial y guarda el saliente en
+  Supabase (aparece en el panel). La capa de envío (`app/messenger/client.py`) ramifica por
+  `platform`; el orchestrator no cambió. **El bot no tuvo cambios de código, solo config.**
+- **Toggle IA por chat:** columna `ai_on` (default true) en la tabla `conversations` de Supabase;
+  el panel la cambia con `POST /api/ai-toggle`. Off → WhatsApp 100% manual. v1 = **solo texto**.
+- **Config:** panel = `GATEWAY_SECRET` + `BOT_WEBHOOK_URL`; bot = `WHATSAPP_GATEWAY_URL` (URL del
+  panel) + `WHATSAPP_SHARED_SECRET` (= `GATEWAY_SECRET`). Ver `chatbot/whatsapp-cloud/README.md`.
+- **Persistencia del panel:** conversaciones en **Supabase** (cuenta de La Cava), no en Sheets.
+  El cerebro (bot Python) sigue guardando su estado de WhatsApp en Sheets (`actividad`, columna
+  `canal='whatsapp'`) igual que Messenger/IG — dos almacenes distintos por ahora.
 
 ## Convenciones del workspace
 
