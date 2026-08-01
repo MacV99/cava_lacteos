@@ -38,13 +38,33 @@ src/
   supabase.js   cliente Supabase (service-role; solo backend)
   store.js      conversaciones en memoria + write-through (Supabase | JSON)
   whatsapp.js   envío (sendText/sendTemplate/markRead) + descarga de media + salud del número
-  handler.js    procesa el webhook (entrantes + acuses de estado)
+  handler.js    procesa el webhook (entrantes + acuses de estado) + reenvía al bot si IA on
+  bridge.js     puente panel → bot Python (POST {BOT_WEBHOOK_URL} con X-Gateway-Secret)
   errors.js     mapa de códigos de error de Meta → lenguaje natural
-  server.js     Express: panel + API + /webhook
+  server.js     Express: panel + API + /webhook + /send (bot → panel)
 public/         el panel (index.html, styles.css, app.js)
 supabase/       schema.sql (tablas conversations + messages, RLS)
 scripts/        migrate-json-to-supabase.js (import único del JSON)
 ```
+
+### IA en WhatsApp — puente al bot Python (opcional)
+
+Con `GATEWAY_SECRET` + `BOT_WEBHOOK_URL` definidas, WhatsApp usa **el mismo cerebro de IA**
+que Messenger/IG (bot Python `chatbot/meta/`), sin duplicar lógica. Este panel hace de
+**gateway** (el rol que tenía el viejo Baileys), reusando el contrato que el bot ya habla:
+
+```
+Cliente → Meta → panel /webhook → guarda en Supabase
+                               └→ (si ai_on) POST {BOT_WEBHOOK_URL} {jid,phone,name,text,mid}
+Bot Python (Groq) → POST panel /send {jid,text} → Graph API → Cliente
+                                               └→ guarda saliente en Supabase (visible en panel)
+```
+
+- **Toggle por chat** (`ai_on` en la tabla `conversations`, default `true`): el interruptor del
+  panel lo cambia vía `POST /api/ai-toggle`. On → el webhook reenvía; off → 100% manual.
+- **Lado del bot: cero código**, solo config → apunta `WHATSAPP_GATEWAY_URL` a la URL de este
+  panel y usa el MISMO secreto: `WHATSAPP_SHARED_SECRET` (bot) = `GATEWAY_SECRET` (panel).
+- **v1 = solo texto.** Media entrante (fotos, notas de voz) no dispara la IA; se atiende a mano.
 
 ## Puesta en marcha
 

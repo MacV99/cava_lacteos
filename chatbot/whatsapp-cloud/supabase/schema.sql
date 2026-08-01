@@ -9,6 +9,7 @@ create table if not exists public.conversations (
   last_inbound_ts bigint not null default 0,   -- epoch ms del último entrante (ventana 24h)
   unread          int    not null default 0,
   blocked         boolean not null default false,
+  ai_on           boolean not null default true,  -- IA responde este chat (puente al bot Python)
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );

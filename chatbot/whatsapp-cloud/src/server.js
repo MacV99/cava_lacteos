@@ -95,6 +95,28 @@ app.post('/webhook', (req, res) => {
   handleWebhookBody(req.body).catch((e) => console.error('[webhook] error procesando:', e));
 });
 
+// ── /send: el bot Python (IA) pide enviar un texto a un cliente ──────────────
+// Mismo contrato que el gateway Baileys: { jid, text } + header X-Gateway-Secret.
+// jid == wa_id (número). Envía por Graph API y guarda el saliente para el panel.
+app.post('/send', async (req, res) => {
+  const secret = req.get('X-Gateway-Secret') || '';
+  if (!config.gatewaySecret || secret !== config.gatewaySecret) {
+    return res.status(403).json({ ok: false, error: 'secreto inválido' });
+  }
+  const { jid, text } = req.body || {};
+  if (!jid || !text) return res.status(400).json({ ok: false, error: 'faltan jid y text' });
+  try {
+    const data = await sendText(jid, text);
+    const wamid = data.messages?.[0]?.id || null;
+    store.addOutbound(jid, { id: wamid, ts: Date.now(), type: 'text', text });
+    res.json({ ok: true, id: wamid });
+  } catch (e) {
+    const raw = fullMessage(e);
+    console.error(`[send/bot] error ${e.code}: ${raw}`);
+    res.status(502).json({ ok: false, code: e.code, message: raw });
+  }
+});
+
 // ── API para el panel ────────────────────────────────────────────────────────
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -204,6 +226,15 @@ app.post('/api/read', async (req, res) => {
   const lastIn = c ? [...c.messages].reverse().find((m) => m.dir === 'in' && m.id) : null;
   if (lastIn) waMarkRead(lastIn.id).catch(() => {});
   res.json({ ok: true });
+});
+
+// Encender/apagar la IA (bot Python) para un chat. On → el webhook reenvía sus entrantes.
+app.post('/api/ai-toggle', (req, res) => {
+  const { waId, on } = req.body || {};
+  if (!waId) return res.status(400).json({ error: 'falta waId' });
+  const c = store.setAiOn(waId, !!on);
+  if (!c) return res.status(404).json({ error: 'conversación no encontrada' });
+  res.json({ ok: true, aiOn: c.aiOn });
 });
 
 // Renombrar contacto de WhatsApp (el nombre por defecto es el del perfil).

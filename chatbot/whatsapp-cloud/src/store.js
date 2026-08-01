@@ -30,6 +30,7 @@ function convToRow(c) {
     last_inbound_ts: c.lastInboundTs || 0,
     unread: c.unread || 0,
     blocked: !!c.blocked,
+    ai_on: c.aiOn !== false,
     updated_at: new Date().toISOString(),
   };
 }
@@ -79,7 +80,7 @@ const supabaseBackend = {
     for (const r of convs || []) {
       map[r.wa_id] = {
         waId: r.wa_id, name: r.name, lastInboundTs: Number(r.last_inbound_ts) || 0,
-        unread: r.unread || 0, blocked: !!r.blocked, messages: [],
+        unread: r.unread || 0, blocked: !!r.blocked, aiOn: r.ai_on !== false, messages: [],
       };
     }
     for (const r of msgs || []) { const c = map[r.wa_id]; if (c) c.messages.push(rowToMsg(r)); }
@@ -165,7 +166,7 @@ export function getConversation(waId) {
 export function ensureConversation(waId, name) {
   let c = conversations[waId];
   if (!c) {
-    c = conversations[waId] = { waId, name: name || waId, lastInboundTs: 0, unread: 0, messages: [] };
+    c = conversations[waId] = { waId, name: name || waId, lastInboundTs: 0, unread: 0, blocked: false, aiOn: true, messages: [] };
   }
   if (name && (c.name === c.waId || !c.name)) c.name = name;
   return c;
@@ -181,6 +182,7 @@ export function listConversations() {
         name: c.name,
         unread: c.unread || 0,
         blocked: !!c.blocked,
+        aiOn: c.aiOn !== false,
         lastInboundTs: c.lastInboundTs || 0,
         lastTs: last ? last.ts : (c.lastInboundTs || 0),
         preview: last ? previewOf(last) : '',
@@ -294,6 +296,15 @@ export function setBlocked(waId, blocked) {
   const c = conversations[waId];
   if (!c) return null;
   c.blocked = !!blocked;
+  backend.upsertConversation(c);
+  return c;
+}
+
+// IA on/off por chat: cuando está on, el webhook reenvía los entrantes al bot Python.
+export function setAiOn(waId, on) {
+  const c = conversations[waId];
+  if (!c) return null;
+  c.aiOn = !!on;
   backend.upsertConversation(c);
   return c;
 }

@@ -100,7 +100,7 @@ function normalizeWA(c) {
   return {
     key: 'whatsapp:' + c.waId, channel: 'whatsapp', id: c.waId,
     name: c.name, lastTs: c.lastTs, unread: c.unread || 0, preview: c.preview,
-    windowOpen: c.windowOpen, windowMsLeft: c.windowMsLeft, aiOn: null, blocked: !!c.blocked,
+    windowOpen: c.windowOpen, windowMsLeft: c.windowMsLeft, aiOn: c.aiOn !== false, blocked: !!c.blocked,
     messages: (c.messages || []).map((m) => ({
       id: m.id, dir: m.dir, type: m.type, text: m.text, ts: m.ts, status: m.status,
       mediaId: m.mediaId, mime: m.mime, filename: m.filename, error: m.error,
@@ -343,14 +343,15 @@ function renderThread() {
   badge.className = 'canal-badge canal-badge--' + c.channel;
   badge.innerHTML = canalIcon(c.channel);
 
-  // Controles según canal: WA → ventana 24h + media/bloqueo; Messenger/IG → toggle IA
+  // Controles según canal: WA → ventana 24h + media/bloqueo; toggle IA en los 3 canales
   $('window-badge').classList.toggle('hidden', !isWA);
-  $('ai-switch').classList.toggle('hidden', isWA);
+  $('ai-switch').classList.remove('hidden');
   $('btn-attach').classList.toggle('hidden', !isWA);
   $('btn-mic').classList.toggle('hidden', !isWA);
   // items del menú ⋯: renombrar siempre; bloquear/eliminar solo WhatsApp
   $('cmenu-block').classList.toggle('hidden', !isWA);
   $('chat-menu').querySelector('[data-act="delete"]').classList.toggle('hidden', !isWA);
+  $('chat-toggle').checked = c.aiOn !== false;
   if (isWA) {
     const wb = $('window-badge');
     if (c.windowOpen) { wb.className = 'win-badge win-badge--open'; wb.textContent = `Abierta · ${fmtLeft(c.windowMsLeft)}`; }
@@ -363,7 +364,6 @@ function renderThread() {
     $('blocked-banner').classList.toggle('hidden', !c.blocked);
     $('window-closed').classList.toggle('hidden', c.blocked || c.windowOpen);
   } else {
-    $('chat-toggle').checked = c.aiOn !== false;
     $('composer-input').disabled = false;
     $('composer-send').disabled = false;
     $('composer').classList.remove('hidden');
@@ -603,13 +603,20 @@ async function doBlockToggle() {
   } catch (e) { notify('Error: ' + (e.message || e), 'err'); }
 }
 
-// ── Toggle IA (Messenger/IG) ─────────────────────────────────────────────────
+// ── Toggle IA — WhatsApp (panel/Supabase) o Messenger/IG (GAS/Sheets) ────────
 async function toggleAI(on) {
-  const c = byKey[activeKey]; if (!c || c.channel === 'whatsapp') return;
-  const nuevo = on ? 'TRUE' : 'FALSE';
+  const c = byKey[activeKey]; if (!c) return;
   c.aiOn = on; listSig = '';           // optimista
-  try { await gasPost({ action: 'toggle', sender_id: c.id, activado: nuevo }); }
-  catch (e) { c.aiOn = !on; notify('No se pudo cambiar la IA', 'err'); $('chat-toggle').checked = !on; }
+  try {
+    if (c.channel === 'whatsapp') {
+      const r = await fetch('/api/ai-toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ waId: c.id, on }) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+    } else {
+      await gasPost({ action: 'toggle', sender_id: c.id, activado: on ? 'TRUE' : 'FALSE' });
+    }
+  } catch (e) {
+    c.aiOn = !on; notify('No se pudo cambiar la IA', 'err'); $('chat-toggle').checked = !on;
+  }
   renderList();
 }
 

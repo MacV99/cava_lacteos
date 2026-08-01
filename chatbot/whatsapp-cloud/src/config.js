@@ -46,6 +46,9 @@ export const config = {
   // Supabase (opcional): si ambos están, el store persiste en Postgres; si no, en JSON local.
   supabaseUrl: process.env.SUPABASE_URL || '',
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  // Puente IA hacia el bot Python (Messenger/IG). Si faltan, WhatsApp queda 100% manual.
+  gatewaySecret: process.env.GATEWAY_SECRET || '',   // header X-Gateway-Secret compartido con el bot
+  botWebhookUrl: process.env.BOT_WEBHOOK_URL || '',  // ej. https://cava-chatbot-meta.onrender.com/webhook/whatsapp
 };
 
 export const graphBase = () => `https://graph.facebook.com/${config.graphVersion}`;

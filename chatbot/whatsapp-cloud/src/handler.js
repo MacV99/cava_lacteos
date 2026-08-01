@@ -1,5 +1,6 @@
 // Procesa el body del webhook de Meta: mensajes entrantes + acuses de estado.
 import { addInbound, applyStatus, applyReaction } from './store.js';
+import { forwardInbound } from './bridge.js';
 
 const MEDIA_TYPES = ['image', 'video', 'audio', 'voice', 'document', 'sticker'];
 
@@ -75,8 +76,10 @@ export async function handleWebhookBody(body) {
         }
 
         const msg = extractMessage(m, name);
-        addInbound(waId, name, msg);
+        const c = addInbound(waId, name, msg);
         console.log(`[in] ${name} (${waId}): ${msg.text || msg.type}`);
+        // Si la IA está encendida para este chat, deja que el bot Python responda.
+        forwardInbound(c, msg);
       }
 
       // acuses de estado (sent/delivered/read/failed)
