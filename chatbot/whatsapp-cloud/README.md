@@ -141,10 +141,22 @@ npm start              # http://localhost:3000
 - [ ] ✓ / ✓✓ / ✓✓ azul aparecen al enviar
 - [ ] Un error (ej. token malo) abre el modal en lenguaje natural
 
-## Producción / limpieza
+## Deploy en Render (runbook)
 
-- Antes de entregar, borra `data/conversations.json` (datos de prueba).
-- Token temporal = 24h. Para producción usa el **permanente** (System User) en `.env`.
-- Despliega el backend con URL fija HTTPS y pon esa URL en Meta (evita re-pegar ngrok).
-- Deploy sugerido (Render): servicio **Node aparte**, `npm start`, disco persistente montado
-  en `data/` para no perder el historial en cada deploy.
+Persistencia = **Supabase** (ya no hace falta disco persistente). Hay `render.yaml`.
+
+1. **Supabase listo:** proyecto de La Cava con el esquema aplicado (`supabase/schema.sql`).
+2. **Crear el servicio** en Render desde el repo, **Root Directory** = `chatbot/whatsapp-cloud`
+   (o usar el `render.yaml`). Runtime Node, `npm install` / `npm start`, health check `/healthz`.
+3. **Env vars** (todas `sync:false` en `render.yaml`): `META_TOKEN`, `PHONE_NUMBER_ID`, `WABA_ID`,
+   `VERIFY_TOKEN`, `PANEL_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, y para la IA
+   `GATEWAY_SECRET` + `BOT_WEBHOOK_URL`.
+4. **Webhook en Meta:** Callback URL = `https://<servicio>.onrender.com/webhook`, mismo `VERIFY_TOKEN`,
+   y suscribir el campo **`messages`**.
+5. **Cablear la IA con el bot** (`chatbot/meta/`): en su Render, `WHATSAPP_GATEWAY_URL` = URL de
+   este panel y `WHATSAPP_SHARED_SECRET` = el **mismo** `GATEWAY_SECRET`.
+6. **Verificar:** `GET /healthz` → `{ok:true}`; escribir al número → aparece en el panel y (si `ai_on`)
+   responde la IA.
+
+Notas: token de Meta = **permanente** (System User), no el temporal de 24h. En Render free el
+servicio duerme tras ~15 min de inactividad (primer mensaje tras dormir tarda en el cold start).
