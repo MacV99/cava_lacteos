@@ -7,6 +7,14 @@
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxAETSMOzO6ozHdy88OoXiKUMZ2YW05VoFvXWGqZHdwDozsGBe6Iiit-hNl9GK-OB_p/exec';
 const POLL_WA_MS = 3000;
 const POLL_META_MS = 6000;
+const POLL_HEALTH_MS = 30000;
+
+// Metadatos de cada canal para el modal de estado.
+const CH_META = {
+  whatsapp:  { name: 'WhatsApp',  color: '#25d366' },
+  messenger: { name: 'Messenger', color: '#2a7fd4' },
+  instagram: { name: 'Instagram', color: '#c13584' },
+};
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,6 +33,8 @@ let activeKey = null;
 let searchTerm = '';
 let channelFilter = 'todos';
 let errorMap = { map: {}, fallback: null };
+let chHealth = { whatsapp: null };   // salud real de WhatsApp Cloud (backend)
+let srvOk = false, metaOk = false;   // server Node alcanzable / Apps Script respondiendo
 let listSig = '', threadSig = '';
 let replyTarget = null;   // { id, text } al que se responde
 let pendingFile = null;   // File adjunto pendiente de enviar
@@ -127,8 +137,21 @@ async function pollMeta() {
       .filter((c) => c.sender_id)
       .map(normalizeMeta)
       .filter((c) => c.channel === 'messenger' || c.channel === 'instagram'); // WhatsApp viejo (Baileys) retirado
-  } catch { /* deja lo que había */ }
+    metaOk = true;
+  } catch { metaOk = false; /* deja lo que había */ }
+  renderStatus();
   rebuild();
+}
+
+// Salud real de WhatsApp Cloud (el backend hace ping a Graph con el token).
+async function pollHealth() {
+  try {
+    const r = await fetch('/api/health/channels');
+    if (r.status === 401) { panelStarted = false; showLogin(); return; }
+    const d = await r.json();
+    chHealth.whatsapp = d.whatsapp || null;
+  } catch { chHealth.whatsapp = { status: 'error', message: 'sin conexión con el servidor' }; }
+  renderStatus();
 }
 function normalizeMeta(c) {
   const raw = (c.canal || '').toLowerCase();
@@ -151,11 +174,70 @@ function rebuild() {
   if (activeKey) renderThread();
   updateTitle();
 }
-function setConn(ok) {
-  const d = $('conn-dot');
-  d.className = 'conn-status ' + (ok ? 'conn-status--ok' : 'conn-status--off');
-  d.title = ok ? 'Conectado al servidor' : 'Sin conexión con el servidor';
+function setConn(ok) { srvOk = ok; renderStatus(); }
+
+// ── Estado de canales ─────────────────────────────────────────────────────────
+function qLabel(q) { return ({ GREEN: 'buena', YELLOW: 'media', RED: 'baja', UNKNOWN: '—' })[q] || String(q).toLowerCase(); }
+
+// Estado por canal: {key, st:'ok'|'err'|'warn'|'load', detail}.
+function channelStates() {
+  let wa;
+  if (!srvOk) {
+    wa = { key: 'whatsapp', st: 'err', detail: 'El servidor del panel no responde.' };
+  } else {
+    const h = chHealth.whatsapp;
+    if (!h) wa = { key: 'whatsapp', st: 'load', detail: 'Comprobando…' };
+    else if (h.status === 'connected') {
+      const parts = [h.number || 'sin número'];
+      if (h.name) parts.push(h.name);
+      if (h.quality) parts.push('calidad ' + qLabel(h.quality));
+      wa = { key: 'whatsapp', st: 'ok', detail: parts.join(' · ') };
+    } else if (h.status === 'no_configurado') {
+      wa = { key: 'whatsapp', st: 'warn', detail: 'Falta META_TOKEN o PHONE_NUMBER_ID en el .env.' };
+    } else {
+      wa = { key: 'whatsapp', st: 'err', detail: `Token/API con error${h.code ? ' (código ' + h.code + ')' : ''}. ${h.message || ''}`.trim() };
+    }
+  }
+  const mkMeta = (key) => {
+    const n = metaConvs.filter((c) => c.channel === key).length;
+    return metaOk
+      ? { key, st: 'ok', detail: `Datos llegando · ${n} chat${n === 1 ? '' : 's'}` }
+      : { key, st: 'err', detail: 'Sin conexión con el Apps Script (Google Sheet).' };
+  };
+  return [wa, mkMeta('messenger'), mkMeta('instagram')];
 }
+
+function statusRowsHTML(states) {
+  return states.map((s) => {
+    const meta = CH_META[s.key];
+    const dotCls = s.st === 'ok' ? 'ok' : (s.st === 'err' ? 'err' : 'warn');
+    return `<div class="status-row">
+      <span class="status-row__icon" style="color:${meta.color}">${canalIcon(s.key)}</span>
+      <div class="status-row__body">
+        <div class="status-row__name">${meta.name}</div>
+        <div class="status-row__detail">${esc(s.detail)}</div>
+      </div>
+      <span class="status-row__dot status-row__dot--${dotCls}" title="${s.st === 'ok' ? 'OK' : s.st === 'err' ? 'Con falla' : 'Atención'}"></span>
+    </div>`;
+  }).join('');
+}
+
+// Punto agregado del topbar + refresco del modal si está abierto.
+function renderStatus() {
+  const states = channelStates();
+  const agg = states.some((s) => s.st === 'err') ? 'off'
+            : states.some((s) => s.st === 'warn' || s.st === 'load') ? 'warn' : 'ok';
+  const dot = $('conn-dot');
+  if (dot) dot.className = 'conn-status conn-status--' + agg;
+  if (!$('status-modal').classList.contains('hidden')) $('status-list').innerHTML = statusRowsHTML(states);
+}
+
+function openStatus() {
+  $('status-list').innerHTML = statusRowsHTML(channelStates());
+  $('status-modal').classList.remove('hidden');
+  pollHealth();   // refresca WhatsApp al abrir
+}
+function closeStatus() { $('status-modal').classList.add('hidden'); }
 function updateTitle() {
   const total = convs.reduce((n, c) => n + (c.unread || 0), 0);
   document.title = (total > 0 ? `(${total}) ` : '') + 'Cava — Panel de Chats';
@@ -606,8 +688,13 @@ function startPanel() {
   if (panelStarted) return;
   panelStarted = true;
   fetch('/api/errors.json').then((r) => r.json()).then((d) => { errorMap = d; }).catch(() => {});
-  pollWA(); pollMeta();
-  if (!intervalsSet) { intervalsSet = true; setInterval(pollWA, POLL_WA_MS); setInterval(pollMeta, POLL_META_MS); }
+  pollWA(); pollMeta(); pollHealth();
+  if (!intervalsSet) {
+    intervalsSet = true;
+    setInterval(pollWA, POLL_WA_MS);
+    setInterval(pollMeta, POLL_META_MS);
+    setInterval(pollHealth, POLL_HEALTH_MS);
+  }
 }
 
 // ── Wire-up ─────────────────────────────────────────────────────────────────
@@ -623,7 +710,9 @@ function wire() {
     inp.focus();
   });
   $('btn-back').addEventListener('click', backToList);
-  $('btn-refresh').addEventListener('click', () => { listSig = ''; threadSig = ''; pollWA(); pollMeta(); });
+  $('btn-refresh').addEventListener('click', () => { listSig = ''; threadSig = ''; pollWA(); pollMeta(); pollHealth(); });
+  $('btn-status').addEventListener('click', openStatus);
+  $('status-modal').querySelectorAll('[data-close-status]').forEach((el) => el.addEventListener('click', closeStatus));
   $('search').addEventListener('input', (e) => { searchTerm = e.target.value; listSig = ''; renderList(); });
   wireDropdown();
   $('chat-nombre').addEventListener('click', renameContact);
@@ -656,7 +745,7 @@ function wire() {
   }));
 
   $('lightbox').addEventListener('click', (e) => { if (e.target.id === 'lightbox' || e.target.classList.contains('lightbox__close')) closeLightbox(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeLightbox(); $('err-modal').classList.add('hidden'); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeLightbox(); $('err-modal').classList.add('hidden'); closeStatus(); } });
   $('err-modal').querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', () => $('err-modal').classList.add('hidden')));
 }
 boot();

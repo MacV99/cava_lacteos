@@ -73,6 +73,22 @@ body {
 .conn-status { width: 9px; height: 9px; border-radius: 50%; background: var(--c400); flex-shrink: 0; }
 .conn-status--ok { background: var(--wa); box-shadow: 0 0 0 3px rgba(37,211,102,.15); }
 .conn-status--off { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+.conn-status--warn { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+
+/* ── Estado de canales (modal) ─────────────────────────────────────────────── */
+.icon-btn--status { position: relative; }
+.status-list { display: flex; flex-direction: column; gap: .55rem; }
+.status-row { display: flex; align-items: center; gap: .75rem; padding: .7rem .8rem; border: 1px solid var(--c200); border-radius: var(--radius); background: var(--c0); }
+.status-row__icon { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; }
+.status-row__icon svg { width: 22px; height: 22px; }
+.status-row__body { flex: 1; min-width: 0; }
+.status-row__name { font-size: .92rem; font-weight: 600; letter-spacing: -0.01em; }
+.status-row__detail { font-size: .76rem; color: var(--c500); margin-top: .12rem; line-height: 1.35; }
+.status-row__dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; background: var(--c400); }
+.status-row__dot--ok   { background: var(--wa);  box-shadow: 0 0 0 3px rgba(37,211,102,.15); }
+.status-row__dot--err  { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+.status-row__dot--warn { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+.status-note { margin-top: .85rem; font-size: .74rem; color: var(--c400); line-height: 1.45; }
 
 /* ── Búsqueda + filtro ─────────────────────────────────────────────────────── */
 .searchbar { padding: .9rem 1.15rem .6rem; flex-shrink: 0; }
@@ -311,9 +327,9 @@ body {
 .login__eye { position: absolute; right: .35rem; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; padding: 0; display: grid; place-items: center; background: transparent; border: 0; border-radius: 9px; color: var(--c400); cursor: pointer; transition: color .15s, background .15s; }
 .login__eye:hover { color: var(--c700); background: var(--c100); }
 .login__eye.is-on { color: var(--c900); }
-.login__card button { width: 100%; padding: .75rem; border: 0; border-radius: var(--radius); background: var(--ink); color: #fff; font-size: .95rem; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: transform .15s, opacity .15s; }
-.login__card button:active { transform: scale(.97); }
-.login__card button:disabled { opacity: .5; cursor: default; }
+.login__card > button { width: 100%; padding: .75rem; border: 0; border-radius: var(--radius); background: var(--ink); color: #fff; font-size: .95rem; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: transform .15s, opacity .15s; }
+.login__card > button:active { transform: scale(.97); }
+.login__card > button:disabled { opacity: .5; cursor: default; }
 .login__err { color: #dc2626; font-size: .82rem; font-weight: 500; }
 
 /* ── Scrollbars ────────────────────────────────────────────────────────────── */

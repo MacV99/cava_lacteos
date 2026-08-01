@@ -106,6 +106,30 @@ export async function markRead(messageId) {
   return r.ok;
 }
 
+// ── Salud del canal ───────────────────────────────────────────────────────────
+/** Ping a Graph /{PHONE_NUMBER_ID}: verifica que el token viva y trae número/calidad.
+ * Devuelve {status:'connected', name, number, quality} | {status:'no_configurado'}
+ * | {status:'error', code, message}. */
+export async function getPhoneHealth() {
+  if (!config.metaToken || !config.phoneNumberId) return { status: 'no_configurado' };
+  const fields = 'verified_name,display_phone_number,quality_rating';
+  try {
+    const r = await fetch(`${graphBase()}/${config.phoneNumberId}?fields=${fields}`, { headers: authHeaders() });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.error) {
+      return { status: 'error', code: data.error?.code ?? r.status, message: data.error?.message || `HTTP ${r.status}` };
+    }
+    return {
+      status: 'connected',
+      name: data.verified_name || '',
+      number: data.display_phone_number || '',
+      quality: data.quality_rating || '',
+    };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+}
+
 // ── Media entrante: 2 pasos con token ────────────────────────────────────────
 /** Paso 1: pedir la URL temporal + mime de un media id. */
 export async function getMediaUrl(id) {

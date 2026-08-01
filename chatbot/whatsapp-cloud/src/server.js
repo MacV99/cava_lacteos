@@ -9,7 +9,7 @@ import { handleWebhookBody } from './handler.js';
 import * as store from './store.js';
 import {
   sendText, sendTemplate, markRead as waMarkRead, getMediaUrl, downloadMedia,
-  uploadMedia, sendMedia, blockUser, unblockUser,
+  uploadMedia, sendMedia, blockUser, unblockUser, getPhoneHealth,
 } from './whatsapp.js';
 import { convertToMp3 } from './audio.js';
 
@@ -232,6 +232,13 @@ app.get('/api/media/:id', async (req, res) => {
 // Mapa de errores para el modal del panel.
 app.get('/api/errors.json', (_req, res) => {
   res.json({ map: ERROR_MAP, fallback: ERROR_FALLBACK });
+});
+
+// Estado real del canal WhatsApp Cloud (ping a Graph con el token del número).
+// Messenger/IG los evalúa el panel por su cuenta (flujo de datos del Apps Script).
+app.get('/api/health/channels', async (_req, res) => {
+  const whatsapp = await getPhoneHealth();
+  res.json({ whatsapp, serverNow: Date.now() });
 });
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));

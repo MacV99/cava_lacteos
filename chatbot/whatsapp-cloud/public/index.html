@@ -38,7 +38,9 @@
         <h1>Chats</h1>
         <span id="chat-count" class="topbar__count"></span>
       </div>
-      <span id="conn-dot" class="conn-status" title="Estado del servidor"></span>
+      <button id="btn-status" class="icon-btn icon-btn--status" title="Estado de los canales" aria-label="Estado de los canales">
+        <span id="conn-dot" class="conn-status"></span>
+      </button>
       <button id="btn-refresh" class="icon-btn" title="Actualizar" aria-label="Actualizar">↻</button>
     </header>
 
@@ -161,6 +163,19 @@
       <p id="err-explica" class="err-explica"></p>
       <div id="err-accion" class="conn-warn"></div>
       <p id="err-code" class="err-code"></p>
+    </div>
+  </div>
+
+  <!-- ── Modal de estado de canales ─────────────────────────────────── -->
+  <div id="status-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Estado de los canales">
+    <div class="modal__backdrop" data-close-status></div>
+    <div class="modal__card">
+      <header class="modal__head">
+        <h2>Estado de los canales</h2>
+        <button class="icon-btn" data-close-status aria-label="Cerrar">✕</button>
+      </header>
+      <div id="status-list" class="status-list"></div>
+      <p class="status-note">WhatsApp se comprueba en vivo contra la API de Meta. Messenger e Instagram reflejan el flujo de datos (Google Sheet), no el token de Meta directamente.</p>
     </div>
   </div>
 
