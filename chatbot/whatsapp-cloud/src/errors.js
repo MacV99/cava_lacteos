@@ -12,7 +12,7 @@ export const ERROR_MAP = {
   130403: { titulo: 'El cliente te bloqueó o límite de negocio', explica: 'El usuario bloqueó tu número o excediste un límite de mensajería.', accion: 'No puedes escribirle. Espera o revisa límites en el panel de Meta.', gravedad: 'warn' },
   131031: { titulo: 'Cuenta restringida', explica: 'Tu cuenta de WhatsApp Business fue restringida o inhabilitada.', accion: 'Revisa la calidad y el estado de la WABA en Business Manager.', gravedad: 'error' },
   132001: { titulo: 'Plantilla no aprobada / inexistente', explica: 'La plantilla no existe o no está aprobada por Meta.', accion: 'Crea y espera la aprobación de la plantilla en el Administrador de WhatsApp.', gravedad: 'error' },
-  131053: { titulo: 'No se pudo enviar la media', explica: 'WhatsApp rechazó el archivo: formato no soportado, dañado o muy grande. Las notas de voz grabadas en Chrome salen en webm y WhatsApp exige ogg/opus.', accion: 'Envía audios como archivo (mp3/ogg) con 📎, o graba la nota de voz desde Firefox. Fotos/videos/PDF normales sí funcionan.', gravedad: 'warn' },
+  131053: { titulo: 'No se pudo enviar la media', explica: 'WhatsApp rechazó el archivo (formato no soportado, dañado o muy grande). El audio se transcodifica a mp3 antes de enviar; si aún falla, mira el detalle "Meta dice:" abajo.', accion: 'Reintenta. Si persiste solo en audios, revisa la consola del server. Fotos/videos/PDF normales sí funcionan.', gravedad: 'warn' },
   131052: { titulo: 'No se pudo descargar la media', explica: 'No se pudo bajar el archivo del mensaje del cliente.', accion: 'Pídele al cliente que lo reenvíe, o inténtalo de nuevo.', gravedad: 'warn' },
   132000: { titulo: 'Parámetros de plantilla no coinciden', explica: 'El número de variables enviadas no coincide con la plantilla.', accion: 'Ajusta los componentes/variables al formato de la plantilla.', gravedad: 'error' },
   80007:  { titulo: 'Límite de velocidad (rate limit)', explica: 'Se enviaron demasiadas peticiones en poco tiempo.', accion: 'Espera unos segundos y reintenta.', gravedad: 'warn' },
@@ -30,4 +30,10 @@ export const ERROR_FALLBACK = {
 
 export function explainError(code) {
   return ERROR_MAP[code] || ERROR_FALLBACK;
+}
+
+// Motivo crudo completo de un error de Meta: mensaje + error_data.details (e.title).
+// Lo usan todos los catch de envío para mostrar el "por qué" fino y no solo el genérico.
+export function fullMessage(e) {
+  return e.title && e.title !== e.message ? `${e.message} — ${e.title}` : e.message;
 }

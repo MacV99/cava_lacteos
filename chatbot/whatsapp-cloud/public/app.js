@@ -381,7 +381,7 @@ async function sendMessage(c, body) {
     if (c.channel === 'whatsapp') {
       const r = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: c.id, text: body, replyTo }) });
       const data = await r.json();
-      if (!data.ok) { showError(data.code, data.error); notify('No se pudo enviar', 'err'); }
+      if (!data.ok) { showError(data.code, data.error, data.message); notify('No se pudo enviar', 'err'); }
       else { clearReply(); threadSig = ''; await pollWA(); }
     } else {
       await gasPost({ action: 'send', sender_id: c.id, text: body });
@@ -413,7 +413,7 @@ async function sendMediaFile(c, file, caption) {
   try {
     const r = await fetch('/api/send-media', { method: 'POST', body: fd });
     const data = await r.json();
-    if (!data.ok) { showError(data.code, data.error); notify('No se pudo enviar el adjunto', 'err'); }
+    if (!data.ok) { showError(data.code, data.error, data.message); notify('No se pudo enviar el adjunto', 'err'); }
     else { clearAttach(); clearReply(); $('composer-input').value = ''; $('composer-input').style.height = 'auto'; threadSig = ''; await pollWA(); }
   } catch (e) {
     notify('Error al enviar adjunto: ' + (e.message || e), 'err');
@@ -546,10 +546,12 @@ async function renameContact() {
 }
 
 // ── Modal error / lightbox ────────────────────────────────────────────────────
-function showError(code, inline) {
+function showError(code, inline, rawMessage) {
   const info = inline || errorMap.map[code] || errorMap.fallback || { titulo: 'Error', explica: 'Error desconocido.', accion: '', gravedad: 'error' };
   $('err-titulo').textContent = info.titulo || 'Error';
-  $('err-explica').textContent = info.explica || '';
+  // El texto de errors.js es genérico; el motivo REAL lo da Meta en su message crudo.
+  const explica = info.explica || '';
+  $('err-explica').textContent = rawMessage ? `${explica}\n\nMeta dice: ${rawMessage}` : explica;
   $('err-accion').textContent = info.accion || '';
   $('err-code').textContent = code ? `Código: ${code}` : '';
   $('err-modal').classList.remove('hidden');

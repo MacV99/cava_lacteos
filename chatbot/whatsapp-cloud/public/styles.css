@@ -182,6 +182,9 @@ body {
   animation: rowIn .3s ease both; box-shadow: var(--shadow-sm);
 }
 @keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* En hover la burbuja sube de capa para que su reacción (cuelga abajo) y su barra de
+   acciones (cuelga arriba) no las tape la burbuja vecina, que se pinta después. */
+.bubble:hover { z-index: 5; }
 .bubble--in  { align-self: flex-start; background: var(--c0); color: var(--c900); border-bottom-left-radius: 4px; }
 .bubble--out { align-self: flex-end; background: #d9fdd3; color: var(--c900); border-bottom-right-radius: 4px; }
 .bubble__text { white-space: pre-wrap; }
@@ -198,7 +201,7 @@ body {
 
 /* ── Reacción pegada a la burbuja ──────────────────────────────────────────── */
 .bubble__reaction {
-  position: absolute; bottom: -12px; font-size: .82rem; line-height: 1;
+  position: absolute; bottom: -12px; z-index: 4; font-size: .82rem; line-height: 1;
   background: var(--c0); border: 1px solid var(--c200); border-radius: 999px;
   padding: .12rem .3rem; box-shadow: var(--shadow-sm);
 }
@@ -265,7 +268,7 @@ body {
 .bubble__quote { border-left: 3px solid rgba(0,0,0,.18); padding: .2rem .5rem; margin-bottom: .3rem; font-size: .78rem; color: var(--c600); background: rgba(0,0,0,.04); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
 /* ── Acciones por burbuja (responder / eliminar) ───────────────────────────── */
-.bubble__acts { position: absolute; top: -12px; display: none; gap: .15rem; background: var(--c0); border: 1px solid var(--c200); border-radius: 999px; padding: .1rem; box-shadow: var(--shadow-sm); }
+.bubble__acts { position: absolute; top: -12px; z-index: 6; display: none; gap: .15rem; background: var(--c0); border: 1px solid var(--c200); border-radius: 999px; padding: .1rem; box-shadow: var(--shadow-sm); }
 .bubble--in .bubble__acts { right: 6px; }
 .bubble--out .bubble__acts { left: 6px; }
 .bubble:hover .bubble__acts { display: flex; }
@@ -288,7 +291,7 @@ body {
 .modal__card { position: relative; z-index: 1; width: 100%; max-width: 440px; max-height: 88dvh; overflow-y: auto; background: var(--c50); border: 1px solid var(--c200); border-radius: 20px; box-shadow: var(--shadow); padding: 1.1rem 1.15rem 1.25rem; animation: viewIn .22s ease both; }
 .modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .9rem; }
 .modal__head h2 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.015em; }
-.err-explica { font-size: .9rem; color: var(--c800); line-height: 1.5; margin-bottom: .3rem; }
+.err-explica { font-size: .9rem; color: var(--c800); line-height: 1.5; margin-bottom: .3rem; white-space: pre-line; }
 .conn-warn { margin-top: .8rem; padding: .7rem .85rem; border-radius: var(--radius); background: var(--c100); border: 1px solid var(--c200); font-size: .82rem; color: var(--c600); line-height: 1.45; }
 .err-code { margin-top: .8rem; font-size: .72rem; color: var(--c400); font-family: ui-monospace, monospace; }
 

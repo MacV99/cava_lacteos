@@ -11,10 +11,10 @@ import {
   sendText, sendTemplate, markRead as waMarkRead, getMediaUrl, downloadMedia,
   uploadMedia, sendMedia, blockUser, unblockUser,
 } from './whatsapp.js';
-import { convertToOggOpus, needsConversion } from './audio.js';
+import { convertToMp3 } from './audio.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
-import { explainError, ERROR_MAP, ERROR_FALLBACK } from './errors.js';
+import { explainError, fullMessage, ERROR_MAP, ERROR_FALLBACK } from './errors.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -125,9 +125,9 @@ app.post('/api/send', async (req, res) => {
     store.addOutbound(to, { id: wamid, ts: Date.now(), ...msg });
     res.json({ ok: true, id: wamid });
   } catch (e) {
-    const info = explainError(e.code);
-    console.error(`[send] error ${e.code}: ${e.message}`);
-    res.status(502).json({ ok: false, code: e.code, message: e.message, error: { code: e.code, ...info } });
+    const info = explainError(e.code), raw = fullMessage(e);
+    console.error(`[send] error ${e.code}: ${raw}`);
+    res.status(502).json({ ok: false, code: e.code, message: raw, error: { code: e.code, ...info } });
   }
 });
 
@@ -138,13 +138,14 @@ app.post('/api/send-media', upload.single('file'), async (req, res) => {
   if (!to || !type || !file) return res.status(400).json({ error: 'faltan to, type o file' });
   try {
     let buffer = file.buffer, mime = file.mimetype, filename = file.originalname;
-    // Audio → convertir SIEMPRE a ogg/opus (formato de nota de voz que WhatsApp acepta).
     if (type === 'audio') {
       const before = mime;
-      buffer = await convertToOggOpus(buffer);
-      mime = 'audio/ogg';
-      filename = (filename || 'audio').replace(/\.[^.]+$/, '') + '.ogg';
-      console.log(`[send-media] audio ${before} (${file.size}b) → ogg/opus (${buffer.length}b)`);
+      // MP3: llega como audio con play. Nota de voz nativa (ogg/opus + voice:true) queda
+      // para producción — el número de prueba la rechaza con 131053. Ver audio.js.
+      buffer = await convertToMp3(buffer);
+      mime = 'audio/mpeg';
+      filename = (filename || 'audio').replace(/\.[^.]+$/, '') + '.mp3';
+      console.log(`[send-media] audio ${before} (${file.size}b) → mp3 (${buffer.length}b)`);
     } else {
       console.log(`[send-media] ${type} ${mime} (${file.size}b)`);
     }
@@ -157,9 +158,9 @@ app.post('/api/send-media', upload.single('file'), async (req, res) => {
     });
     res.json({ ok: true, id: wamid, mediaId });
   } catch (e) {
-    const info = explainError(e.code);
-    console.error(`[send-media] error ${e.code}: ${e.message}`);
-    res.status(502).json({ ok: false, code: e.code, message: e.message, error: { code: e.code, ...info } });
+    const info = explainError(e.code), raw = fullMessage(e);
+    console.error(`[send-media] error ${e.code}: ${raw}`);
+    res.status(502).json({ ok: false, code: e.code, message: raw, error: { code: e.code, ...info } });
   }
 });
 
@@ -187,9 +188,9 @@ app.post('/api/conversation/block', async (req, res) => {
     store.setBlocked(waId, !!block);
     res.json({ ok: true, blocked: !!block });
   } catch (e) {
-    const info = explainError(e.code);
-    console.error(`[block] error ${e.code}: ${e.message}`);
-    res.status(502).json({ ok: false, code: e.code, message: e.message, error: { code: e.code, ...info } });
+    const info = explainError(e.code), raw = fullMessage(e);
+    console.error(`[block] error ${e.code}: ${raw}`);
+    res.status(502).json({ ok: false, code: e.code, message: raw, error: { code: e.code, ...info } });
   }
 });
 

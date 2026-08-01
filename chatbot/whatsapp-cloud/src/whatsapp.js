@@ -53,11 +53,14 @@ export async function uploadMedia(buffer, mime, filename = 'file') {
   return data; // { id }
 }
 
-/** Envía media ya subida. type: image|audio|video|document|sticker. */
-export function sendMedia(to, type, mediaId, { caption, filename, replyTo } = {}) {
+/** Envía media ya subida. type: image|audio|video|document|sticker.
+ * Para audio, `voice: true` lo entrega como NOTA DE VOZ nativa (onda/mic) en vez de
+ * archivo de audio. Requiere que el media sea ogg/opus mono (ver audio.js). */
+export function sendMedia(to, type, mediaId, { caption, filename, replyTo, voice } = {}) {
   const media = { id: mediaId };
   if (caption && (type === 'image' || type === 'video' || type === 'document')) media.caption = caption;
   if (filename && type === 'document') media.filename = filename;
+  if (type === 'audio' && voice) media.voice = true;
   const payload = { messaging_product: 'whatsapp', to, type, [type]: media };
   if (replyTo) payload.context = { message_id: replyTo };
   return postToGraph(payload);

@@ -1,18 +1,17 @@
-// Conversión de audio a ogg/opus (lo que WhatsApp acepta como nota de voz).
-// Chrome graba webm/opus; se remuxea/transcodifica a ogg/opus con un ffmpeg portable.
+// Conversión de audio para envío por WhatsApp Cloud.
+//
+// ACTIVO: convertToMp3 → llega como archivo de audio con play. Confiable en el número
+// de PRUEBA actual.
+//
+// GUARDADO para producción: convertToOggOpus → nota de voz nativa (onda/mic). Requiere
+// enviar con `"voice": true` (ver whatsapp.js) Y un número de PRODUCCIÓN con negocio
+// verificado. En el número de prueba Meta lo rechaza con 131053 ("octet-stream on
+// processing") pese a que el ogg/opus es válido. Reactivar cuando se pase a producción.
 import { spawn } from 'node:child_process';
 import ffmpegPath from 'ffmpeg-static';
 
-// Formatos de audio que WhatsApp acepta directo (no hace falta convertir).
-export const ACCEPTED_AUDIO = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg'];
-
-export function needsConversion(mime) {
-  return !ACCEPTED_AUDIO.includes(String(mime || '').split(';')[0].trim().toLowerCase());
-}
-
-export function convertToOggOpus(inputBuffer) {
+function runFfmpeg(args, inputBuffer) {
   return new Promise((resolve, reject) => {
-    const args = ['-i', 'pipe:0', '-vn', '-c:a', 'libopus', '-b:a', '32k', '-ar', '48000', '-ac', '1', '-f', 'ogg', 'pipe:1'];
     const ff = spawn(ffmpegPath, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     const out = [];
     let err = '';
@@ -27,4 +26,13 @@ export function convertToOggOpus(inputBuffer) {
     ff.stdin.write(inputBuffer);
     ff.stdin.end();
   });
+}
+
+export function convertToMp3(inputBuffer) {
+  return runFfmpeg(['-i', 'pipe:0', '-vn', '-c:a', 'libmp3lame', '-b:a', '64k', '-ar', '44100', '-ac', '1', '-f', 'mp3', 'pipe:1'], inputBuffer);
+}
+
+// Nota de voz nativa (producción). mono, opus, perfil voip.
+export function convertToOggOpus(inputBuffer) {
+  return runFfmpeg(['-i', 'pipe:0', '-vn', '-c:a', 'libopus', '-b:a', '32k', '-ar', '48000', '-ac', '1', '-application', 'voip', '-f', 'ogg', 'pipe:1'], inputBuffer);
 }
