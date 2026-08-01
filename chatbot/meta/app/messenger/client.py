@@ -1,9 +1,17 @@
-"""Cliente para la Graph API de Meta (envío de mensajes — Messenger e Instagram)."""
+"""Capa de envío de mensajes por canal.
+
+Messenger e Instagram → Graph API de Meta (este módulo).
+WhatsApp → delega en app.whatsapp.gateway (servicio Node Baileys por HTTP).
+
+El orchestrator llama estas funciones con `platform` y no sabe nada del transporte:
+así WhatsApp entra como un canal más sin tocar la lógica de negocio.
+"""
 import logging
 
 import httpx
 
 from app.config import settings
+from app.whatsapp import gateway as wa_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +33,9 @@ async def get_profile_name(psid: str, platform: str = "messenger") -> str:
     - Messenger: fields=first_name,last_name
     - Instagram: fields=name
     """
+    if platform == "whatsapp":
+        # El nombre (pushName) llegó en el evento entrante y quedó cacheado.
+        return wa_gateway.get_pushname(psid)
     fields = "name" if platform == "instagram" else "first_name,last_name"
     try:
         resp = await _http.get(
@@ -45,6 +56,9 @@ async def get_profile_name(psid: str, platform: str = "messenger") -> str:
 
 
 async def send_text(psid: str, text: str, platform: str = "messenger") -> None:
+    if platform == "whatsapp":
+        await wa_gateway.send_text(psid, text)
+        return
     payload = {
         "recipient": {"id": psid},
         "message": {"text": text},
@@ -53,6 +67,9 @@ async def send_text(psid: str, text: str, platform: str = "messenger") -> None:
 
 
 async def send_typing_on(psid: str, platform: str = "messenger") -> None:
+    if platform == "whatsapp":
+        # Baileys puede enviar presencia, pero no es crítico; no-op en v1.
+        return
     payload = {
         "recipient": {"id": psid},
         "sender_action": "typing_on",
@@ -68,6 +85,33 @@ async def send_reaction(psid: str, mid: str, reaction: str = "love", platform: s
         "payload": {"reaction": reaction, "message_id": mid},
     }
     await _post(payload, platform)
+
+
+async def check_connection(platform: str) -> dict:
+    """Verifica que el token del canal Meta siga válido llamando a Graph /me.
+
+    Devuelve {status, name?}: 'connected' (token válido), 'no_configurado' (sin token),
+    o 'error' (token inválido/caducado). Messenger e Instagram no tienen sesión persistente
+    como WhatsApp; su 'conexión' es que el token de la Página/cuenta responda.
+    """
+    if platform == "instagram":
+        token = settings.meta_ig_access_token or settings.meta_page_access_token
+    else:
+        token = settings.meta_page_access_token
+    if not token:
+        return {"status": "no_configurado"}
+    try:
+        resp = await _http.get(
+            "https://graph.facebook.com/v20.0/me",
+            params={"fields": "name", "access_token": token},
+        )
+        if resp.status_code == 200:
+            return {"status": "connected", "name": resp.json().get("name", "")}
+        logger.warning("check_connection %s: %s %s", platform, resp.status_code, resp.text)
+        return {"status": "error"}
+    except Exception as exc:
+        logger.warning("check_connection %s error: %s", platform, exc)
+        return {"status": "error"}
 
 
 async def _post(payload: dict, platform: str = "messenger") -> None:

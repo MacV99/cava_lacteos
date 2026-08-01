@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
 from app.config import settings
@@ -29,7 +30,21 @@ async def _lifespan(app: FastAPI):
     _scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram)", lifespan=_lifespan)
+app = FastAPI(title="Cava Lácteos — Chatbot (Messenger + Instagram + WhatsApp)", lifespan=_lifespan)
+
+# CORS para que el panel estático consuma /connections* desde otro origen.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.panel_origin] if settings.panel_origin != "*" else ["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+def _check_panel_token(request: Request) -> None:
+    """Si PANEL_TOKEN está definido, exige el header X-Panel-Token en /connections*."""
+    if settings.panel_token and request.headers.get("x-panel-token", "") != settings.panel_token:
+        raise HTTPException(status_code=403, detail="Panel token inválido")
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -85,6 +100,82 @@ async def webhook_receive(request: Request, background_tasks: BackgroundTasks):
         for change in entry.get("changes", []):
             if change.get("field") == "messages":
                 _enqueue(change.get("value", {}), platform, background_tasks, handle_event)
+
+    return Response(content="EVENT_RECEIVED", status_code=200)
+
+
+@app.get("/connections")
+async def connections_status(request: Request):
+    """Estado de conexión de los 3 canales para el panel admin.
+
+    whatsapp: {status, phone} desde el gateway Baileys.
+    messenger / instagram: {status, name?} según validez del token de Meta.
+    """
+    _check_panel_token(request)
+    from app.messenger.client import check_connection
+    from app.whatsapp import gateway as wa_gateway
+
+    wa = await wa_gateway.get_status()
+    messenger = await check_connection("messenger")
+    instagram = await check_connection("instagram")
+    return {"whatsapp": wa, "messenger": messenger, "instagram": instagram}
+
+
+@app.get("/connections/whatsapp/qr")
+async def connections_whatsapp_qr(request: Request):
+    """QR (data URL) para vincular WhatsApp, vía gateway."""
+    _check_panel_token(request)
+    from app.whatsapp import gateway as wa_gateway
+    return await wa_gateway.get_qr()
+
+
+@app.post("/connections/whatsapp/disconnect")
+async def connections_whatsapp_disconnect(request: Request):
+    """Cierra la sesión de WhatsApp (regenera QR)."""
+    _check_panel_token(request)
+    from app.whatsapp import gateway as wa_gateway
+    ok = await wa_gateway.disconnect()
+    return {"ok": ok}
+
+
+@app.post("/webhook/whatsapp")
+async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
+    """Recibe mensajes de texto reenviados por el gateway Baileys (servicio Node).
+
+    El gateway ya normalizó el evento a: { jid, phone, name, text, mid }.
+    Aquí se autentica con el secreto compartido, se sintetiza el shape que espera
+    `parse()` (igual que Messenger) y se procesa con el MISMO orchestrator.
+    Responde 200 rápido; el trabajo real (buffer 5 s + LLM) va a background.
+    """
+    from app.bot.orchestrator import handle_event
+    from app.whatsapp import gateway as wa_gateway
+
+    secret = request.headers.get("x-gateway-secret", "")
+    if not settings.whatsapp_shared_secret or secret != settings.whatsapp_shared_secret:
+        raise HTTPException(status_code=403, detail="Secreto inválido")
+
+    payload = await request.json()
+    jid = str(payload.get("jid", "")).strip()
+    text = str(payload.get("text", "")).strip()
+    if not jid or not text:
+        return Response(status_code=200)
+
+    mid = str(payload.get("mid", "")).strip()
+    if mid:
+        if mid in _seen_mids:
+            logger.info("WA duplicado ignorado mid=%s", mid)
+            return Response(status_code=200)
+        _seen_mids.add(mid)
+        if len(_seen_mids) > _MAX_SEEN:
+            _seen_mids.clear()
+
+    # El pushName no viene de ninguna API: lo cacheamos para que el orchestrator
+    # lo recupere vía get_profile_name(jid, "whatsapp").
+    wa_gateway.remember_pushname(jid, payload.get("name"))
+
+    # Shape compatible con parser.parse() (usa sender.id como psid = jid).
+    messaging = {"sender": {"id": jid}, "message": {"text": text, "mid": mid or None}}
+    background_tasks.add_task(handle_event, messaging, "whatsapp")
 
     return Response(content="EVENT_RECEIVED", status_code=200)
 

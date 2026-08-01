@@ -13,11 +13,28 @@ cava_lacteos/
 ├── website/          ← Sitio web y catálogo (Astro) — sin inicializar
 ├── chatbot/
 │   ├── meta/         ← Chatbot Facebook Messenger + Instagram DMs (FastAPI + Groq + Sheets) — EN PRODUCCIÓN (Render)
-│   └── whatsapp/     ← Pendiente
+│   └── whatsapp/     ← Gateway Baileys (Node) — nuevo canal WhatsApp que enlaza con el bot de meta/ por HTTP
 └── CLAUDE.md
 ```
 
-Solo `chatbot/meta/` tiene código. El resto son carpetas vacías.
+`website/` sigue vacío. `chatbot/meta/` es el cerebro (lógica de negocio, LLM, Sheets);
+`chatbot/whatsapp/` es solo transporte Baileys que reutiliza ese cerebro por HTTP.
+
+### WhatsApp como canal (no un proyecto aparte)
+
+WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Instagram.
+El gateway Node (`chatbot/whatsapp/`) conecta WhatsApp por QR con Baileys y hace de
+puente HTTP con el bot Python:
+
+- **Entrada:** gateway → `POST /webhook/whatsapp` (en `chatbot/meta/app/main.py`) con
+  `{jid, phone, name, text, mid}` + header `X-Gateway-Secret`. El bot sintetiza el shape
+  de Messenger y corre el **mismo** `handle_event` con `platform="whatsapp"`.
+- **Salida:** el bot llama `app.whatsapp.gateway.send_text` → `POST {WHATSAPP_GATEWAY_URL}/send`.
+- La capa de envío (`app/messenger/client.py`) ramifica por `platform`: `whatsapp` delega
+  en el gateway; Messenger/Instagram siguen yendo a la Graph API. El orchestrator no cambió.
+- En Sheets, la columna `canal` guarda `whatsapp` igual que `messenger`/`instagram`.
+- Vars nuevas del bot: `WHATSAPP_GATEWAY_URL`, `WHATSAPP_SHARED_SECRET` (= `GATEWAY_SECRET`
+  del gateway). Ver `chatbot/whatsapp/README.md`. v1 = solo texto.
 
 ## Convenciones del workspace
 

@@ -13,6 +13,14 @@ services:
         sync: false
       - key: META_IG_ACCESS_TOKEN
         sync: false
+      - key: WHATSAPP_GATEWAY_URL
+        sync: false
+      - key: WHATSAPP_SHARED_SECRET
+        sync: false
+      - key: PANEL_ORIGIN
+        sync: false
+      - key: PANEL_TOKEN
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_CHAT_MODEL

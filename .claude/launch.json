@@ -6,6 +6,13 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "panel", "-l", "5050"],
       "port": 5050
+    },
+    {
+      "name": "wa-cloud",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["src/server.js"],
+      "cwd": "chatbot/whatsapp-cloud",
+      "port": 3000
     }
   ]
 }

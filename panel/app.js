@@ -4,9 +4,16 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxAETSMOzO6ozHdy88OoXiK
 
 const CACHE_KEY = "cava_panel_v1";
 
+// URL pública del bot FastAPI (Render). Gestiona el estado de conexión de los canales.
+// Ej: "https://cava-chatbot-meta.onrender.com". Déjalo vacío para ocultar Conexiones.
+const BOT_URL = "";
+// Si en el bot definiste PANEL_TOKEN, ponlo aquí (viaja en header X-Panel-Token).
+const PANEL_TOKEN = "";
+
 // ── Estado en memoria ─────────────────────────────────────────────────────────
 let liveData = [];        // lista de chats
 let currentSenderId = null;
+let currentCanal = "todos";   // filtro de canal activo: todos | whatsapp | messenger | instagram
 
 // ── SVG logos de canal ─────────────────────────────────────────────────────────
 const ICON_IG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.05 1.8.25 2.2.42.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.17.4.37 1 .42 2.2.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.05 1.2-.25 1.8-.42 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.17-1 .37-2.2.42-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.05-1.8-.25-2.2-.42-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.17-.4-.37-1-.42-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.05-1.2.25-1.8.42-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.17 1-.37 2.2-.42C8.4 2.2 8.8 2.2 12 2.2zm0 3.2A6.6 6.6 0 1 0 18.6 12 6.6 6.6 0 0 0 12 5.4zm0 10.9A4.3 4.3 0 1 1 16.3 12 4.3 4.3 0 0 1 12 16.3zm6.8-11.1a1.54 1.54 0 1 1-1.54-1.54 1.54 1.54 0 0 1 1.54 1.54z"/></svg>`;
@@ -85,9 +92,14 @@ function renderList(filter = "") {
   loading.classList.add("hidden");
 
   const q = filter.trim().toLowerCase();
-  const rows = liveData
-    .filter(c => c.sender_id)
+  const named = liveData.filter(c => c.sender_id);
+
+  // Conteos por canal (antes de filtrar por canal, para mostrar el total de cada chip)
+  updateFilterCounts(named);
+
+  const rows = named
     .filter(c => !q || (c.nombre || "").toLowerCase().includes(q))
+    .filter(c => currentCanal === "todos" || canalInfo(c.canal).cls === currentCanal)
     .sort((a, b) => fechaMs(b.ultima_vez) - fechaMs(a.ultima_vez));
 
   const countEl = document.getElementById("chat-count");
@@ -117,6 +129,8 @@ function renderList(filter = "") {
   list.querySelectorAll(".chat-row").forEach(row => {
     row.addEventListener("click", () => openChat(row.dataset.id));
   });
+
+  markActiveRow();   // renderList reconstruye filas; re-marca la abierta
 }
 
 // ── Vista conversación ──────────────────────────────────────────────────────────
@@ -139,6 +153,7 @@ function openChat(senderId) {
   input.style.height = "auto";
 
   showView("view-chat");
+  markActiveRow();
   renderConversation(c);   // tras showView: la vista ya es visible y el scroll al final funciona
 }
 
@@ -231,6 +246,37 @@ function renameChat(senderId) {
 function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("view--active"));
   document.getElementById(id).classList.add("view--active");
+  // En desktop ambas vistas se ven a la vez; esta clase revela el chat y oculta el
+  // placeholder. En mobile es inofensiva (una vista a la vez por CSS).
+  document.body.classList.toggle("chat-open", id === "view-chat");
+}
+
+// Resalta la fila abierta en la lista (útil en desktop, donde lista y chat conviven).
+function markActiveRow() {
+  document.querySelectorAll(".chat-row").forEach(r => {
+    r.classList.toggle("chat-row--active", r.dataset.id === currentSenderId);
+  });
+}
+
+// Escribe el número de chats de cada canal en las opciones del desplegable.
+const _CANAL_LABELS = { todos: "Todos los canales", whatsapp: "WhatsApp", messenger: "Messenger", instagram: "Instagram" };
+function updateFilterCounts(chats) {
+  const counts = { todos: chats.length, whatsapp: 0, messenger: 0, instagram: 0 };
+  for (const c of chats) {
+    const cls = canalInfo(c.canal).cls;
+    if (cls in counts) counts[cls]++;
+  }
+  document.querySelectorAll("#canal-filter option").forEach(opt => {
+    opt.textContent = `${_CANAL_LABELS[opt.value] ?? opt.value} (${counts[opt.value] ?? 0})`;
+  });
+}
+
+// Cambia el filtro de canal y re-renderiza la lista respetando la búsqueda actual.
+function setCanalFilter(canal) {
+  currentCanal = canal;
+  const sel = document.getElementById("canal-filter");
+  if (sel && sel.value !== canal) sel.value = canal;
+  renderList(document.getElementById("search").value);
 }
 
 // ── Carga de datos ────────────────────────────────────────────────────────────────
@@ -264,6 +310,156 @@ function notify(msg, type = "ok") {
   pill._timer = setTimeout(() => { pill.style.opacity = "0"; }, 2500);
 }
 
+// ── Conexiones (estado de canales + gestión de WhatsApp) ───────────────────────────
+let connPollTimer = null;
+let qrPollTimer = null;
+
+function botFetch(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers);
+  if (PANEL_TOKEN) headers["X-Panel-Token"] = PANEL_TOKEN;
+  return fetch(BOT_URL.replace(/\/$/, "") + path, { mode: "cors", ...opts, headers });
+}
+
+function connDotClass(status) {
+  if (status === "connected") return "on";
+  if (status === "qr" || status === "connecting") return "warn";
+  if (status === "sin_gateway" || status === "no_configurado") return "gray";
+  return "off";  // disconnected / error
+}
+function connLabel(status) {
+  return {
+    connected: "Conectado", qr: "Esperando QR", connecting: "Conectando…",
+    disconnected: "Desconectado", error: "Token inválido",
+    sin_gateway: "Gateway no disponible", no_configurado: "Sin configurar",
+  }[status] || status;
+}
+
+function openConnections() {
+  document.getElementById("conn-modal").classList.remove("hidden");
+  loadConnections();
+  clearInterval(connPollTimer);
+  if (BOT_URL) connPollTimer = setInterval(loadConnections, 3000);
+}
+function closeConnections() {
+  document.getElementById("conn-modal").classList.add("hidden");
+  clearInterval(connPollTimer); connPollTimer = null;
+  clearInterval(qrPollTimer); qrPollTimer = null;
+}
+
+function renderConnCards(d) {
+  return connCard("whatsapp", "WhatsApp", d.whatsapp) +
+    connCard("messenger", "Messenger", d.messenger) +
+    connCard("instagram", "Instagram", d.instagram);
+}
+
+async function loadConnections() {
+  const body = document.getElementById("conn-body");
+
+  // Sin BOT_URL: mostrar la sección igual (estados desconocidos) con instrucciones.
+  if (!BOT_URL) {
+    body.innerHTML = renderConnCards({
+      whatsapp: { status: "disconnected" }, messenger: { status: "no_configurado" }, instagram: { status: "no_configurado" },
+    }) + `<div class="conn-warn">Para ver el estado real y el QR, define <code>BOT_URL</code> (la URL del bot) en <code>app.js</code>.</div>`;
+    wireConnActions();
+    return;
+  }
+
+  try {
+    const res = await botFetch("/connections");
+    const data = await res.json();
+    body.innerHTML = renderConnCards(data);
+    wireConnActions();
+  } catch (e) {
+    // El bot no respondió: mostrar la sección en gris + aviso (no dejar el modal vacío).
+    body.innerHTML = renderConnCards({
+      whatsapp: { status: "sin_gateway" }, messenger: { status: "sin_gateway" }, instagram: { status: "sin_gateway" },
+    }) + `<div class="conn-warn">No se pudo contactar al bot (${esc(BOT_URL)}).<br>Revisa que esté encendido y que <code>PANEL_ORIGIN</code>/CORS lo permitan.</div>`;
+    wireConnActions();
+  }
+}
+
+function connCard(key, name, info) {
+  info = info || { status: "sin_gateway" };
+  const ci = canalInfo(key);
+  const dot = connDotClass(info.status);
+  let extra = "";
+  if (key === "whatsapp") {
+    if (info.status === "connected") {
+      extra = `<div class="conn-card__meta">+${esc(info.phone || "?")}</div>
+        <button class="conn-btn conn-btn--danger" data-conn-disconnect>Desconectar</button>`;
+    } else if (info.status === "sin_gateway") {
+      extra = `<div class="conn-card__meta conn-card__meta--muted">Revisa que el gateway esté encendido.</div>`;
+    } else {
+      extra = `<button class="conn-btn" data-conn-qr>Mostrar QR</button>`;
+    }
+  } else if (info.status === "connected" && info.name) {
+    extra = `<div class="conn-card__meta conn-card__meta--muted">${esc(info.name)}</div>`;
+  }
+  const qrSlot = key === "whatsapp" ? `<div id="qr-slot" class="qr-slot"></div>` : "";
+  return `
+    <div class="conn-card">
+      <span class="canal-badge canal-badge--${ci.cls}">${ci.svg}</span>
+      <div class="conn-card__info">
+        <div class="conn-card__name">${name}</div>
+        <div class="conn-card__status"><span class="conn-dot conn-dot--${dot}"></span>${connLabel(info.status)}</div>
+      </div>
+      <div class="conn-card__actions">${extra}</div>
+    </div>${qrSlot}`;
+}
+
+function wireConnActions() {
+  const qrBtn = document.querySelector("[data-conn-qr]");
+  if (qrBtn) qrBtn.addEventListener("click", showWhatsappQr);
+  const dcBtn = document.querySelector("[data-conn-disconnect]");
+  if (dcBtn) dcBtn.addEventListener("click", disconnectWhatsapp);
+}
+
+async function showWhatsappQr() {
+  const slot = document.getElementById("qr-slot");
+  if (slot) slot.innerHTML = `<div class="empty">Generando QR…</div>`;
+  // Pausar el refresco de estado para que no borre el QR mientras se escanea.
+  clearInterval(connPollTimer); connPollTimer = null;
+  clearInterval(qrPollTimer);
+  const poll = async () => {
+    try {
+      const res = await botFetch("/connections/whatsapp/qr");
+      const data = await res.json();
+      const s = document.getElementById("qr-slot");
+      if (!s) return;
+      if (data.status === "connected") {
+        clearInterval(qrPollTimer); qrPollTimer = null;
+        s.innerHTML = `<div class="empty">✓ Conectado (+${esc(data.phone || "?")})</div>`;
+        loadConnections();
+        connPollTimer = setInterval(loadConnections, 3000);  // reanudar refresco de estado
+      } else if (data.qr) {
+        s.innerHTML = `<div class="qr-box">
+            <img src="${data.qr}" alt="QR WhatsApp" />
+            <ol><li>WhatsApp → Dispositivos vinculados</li><li>Vincular un dispositivo</li><li>Escanea este código</li></ol>
+          </div>`;
+      } else {
+        s.innerHTML = `<div class="empty">Esperando QR del gateway…</div>`;
+      }
+    } catch {
+      const s = document.getElementById("qr-slot");
+      if (s) s.innerHTML = `<div class="empty">Error obteniendo el QR.</div>`;
+    }
+  };
+  await poll();
+  qrPollTimer = setInterval(poll, 3000);
+}
+
+async function disconnectWhatsapp() {
+  if (!confirm("¿Desconectar WhatsApp? Tendrás que volver a escanear el QR.")) return;
+  try {
+    const res = await botFetch("/connections/whatsapp/disconnect", { method: "POST" });
+    const data = await res.json();
+    if (data.ok) { notify("WhatsApp desconectado ✓"); loadConnections(); }
+    else notify("No se pudo desconectar", "err");
+  } catch {
+    notify("Error al desconectar", "err");
+  }
+}
+
 // ── Instalación PWA ────────────────────────────────────────────────────────────────
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
@@ -278,7 +474,10 @@ document.getElementById("chat-nombre").addEventListener("click", () => {
   if (currentSenderId) renameChat(currentSenderId);
 });
 document.getElementById("btn-refresh").addEventListener("click", loadData);
+document.getElementById("btn-conn").addEventListener("click", openConnections);
+document.querySelectorAll("#conn-modal [data-close]").forEach(el => el.addEventListener("click", closeConnections));
 document.getElementById("search").addEventListener("input", (e) => renderList(e.target.value));
+document.getElementById("canal-filter").addEventListener("change", (e) => setCanalFilter(e.target.value));
 document.getElementById("chat-toggle").addEventListener("change", (e) => {
   if (currentSenderId) toggleAI(currentSenderId, e.target.checked);
 });

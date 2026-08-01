@@ -62,7 +62,7 @@ _PEDIDO_RE = re.compile(
 
 
 async def handle_event(messaging: dict, platform: str = "page") -> None:
-    platform_name = "instagram" if platform == "instagram" else "messenger"
+    platform_name = platform if platform in ("instagram", "whatsapp") else "messenger"
     event = parse(messaging, platform_name)
     if event is None:
         return

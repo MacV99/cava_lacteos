@@ -30,11 +30,28 @@
         <h1>Chats</h1>
         <span id="chat-count" class="topbar__count"></span>
       </div>
+      <button id="btn-conn" class="icon-btn" title="Conexiones" aria-label="Conexiones">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.2" r="1.1" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
       <button id="btn-refresh" class="icon-btn" title="Actualizar" aria-label="Actualizar">↻</button>
     </header>
 
     <div class="searchbar">
       <input id="search" type="search" placeholder="Buscar por nombre…" autocomplete="off" />
+    </div>
+
+    <div class="filterbar">
+      <div class="filter-select">
+        <select id="canal-filter" aria-label="Filtrar por canal">
+          <option value="todos">Todos los canales</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="messenger">Messenger</option>
+          <option value="instagram">Instagram</option>
+        </select>
+        <span class="filter-select__chevron" aria-hidden="true">▾</span>
+      </div>
     </div>
 
     <div id="chat-list" class="chat-list">
@@ -66,11 +83,32 @@
 
     <div id="conversation" class="conversation"></div>
 
+    <!-- Placeholder solo en desktop cuando no hay chat seleccionado -->
+    <div id="chat-empty" class="chat-empty">
+      <div class="chat-empty__icon" aria-hidden="true">💬</div>
+      <p>Selecciona un chat para ver la conversación</p>
+    </div>
+
     <form id="composer" class="composer">
       <textarea id="composer-input" rows="1" placeholder="Escribe una respuesta…" autocomplete="off"></textarea>
       <button type="submit" id="composer-send" class="composer__send" aria-label="Enviar">➤</button>
     </form>
   </section>
+
+  <!-- ── Modal Conexiones ─────────────────────────────────────────────────── -->
+  <div id="conn-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Conexiones">
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__card">
+      <header class="modal__head">
+        <h2>Conexiones</h2>
+        <button class="icon-btn" data-close aria-label="Cerrar">✕</button>
+      </header>
+      <div id="conn-body" class="conn-list">
+        <div class="empty">Cargando estado…</div>
+      </div>
+      <p class="conn-note">WhatsApp usa una sesión por QR. Messenger e Instagram dependen del token de Meta.</p>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
   <script>

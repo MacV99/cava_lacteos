@@ -1,6 +1,6 @@
 // Service worker — Cava Panel
 // Subir versión (v1 → v2) cada vez que cambie HTML/CSS/JS para forzar actualización.
-const CACHE_NAME = "cava-panel-v6";
+const CACHE_NAME = "cava-panel-v8";
 const ASSETS = [
   "/",
   "/index.html",

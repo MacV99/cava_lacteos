@@ -5,7 +5,13 @@ Interfaz gráfica para que el cliente administre los chats del bot sin tocar el 
 ## Qué hace
 
 - Lista todos los chats de la hoja `actividad`.
-- Muestra el **canal** de cada chat con su logo (Facebook Messenger / Instagram).
+- Muestra el **canal** de cada chat con su logo (Facebook Messenger / Instagram / WhatsApp).
+- **Responsive**: en móvil es una vista a la vez (lista → chat); en escritorio (≥900px)
+  es master-detail (lista + conversación lado a lado, con placeholder si no hay selección).
+- **Filtro por canal**: chips Todos / WhatsApp / Messenger / Instagram con conteo.
+- **Conexiones** (botón de antena en la cabecera): estado en vivo de los 3 canales.
+  WhatsApp muestra el número, permite escanear el QR y desconectar. Messenger/Instagram
+  muestran si el token de Meta sigue válido. Requiere configurar `BOT_URL` (ver abajo).
 - **Toggle de IA por chat**: activa/desactiva el bot para un cliente concreto (escribe `activado` = TRUE/FALSE).
 - Abre cualquier chat y muestra el **historial completo** de la conversación.
 - Búsqueda por nombre.
@@ -48,6 +54,16 @@ const API_URL = "PEGAR_URL_DEL_APPS_SCRIPT_AQUI";
 ```
 por la URL del paso 2.
 
+Para la sección **Conexiones**, además:
+```js
+const BOT_URL = "https://cava-chatbot-meta.onrender.com";  // URL pública del bot FastAPI
+const PANEL_TOKEN = "";  // opcional: igual a PANEL_TOKEN del bot (protege /connections)
+```
+Si `BOT_URL` queda vacío, el botón de Conexiones se oculta. En el bot hay que definir
+`PANEL_ORIGIN` (CORS: el dominio del panel) y, si usas token, `PANEL_TOKEN`. El bot proxya
+al gateway WhatsApp (`WHATSAPP_GATEWAY_URL`) para el QR/desconexión; si el gateway está
+apagado, WhatsApp aparece como "Gateway no disponible".
+
 ### 4. Servir / desplegar
 Cualquier hosting estático con **HTTPS** (requisito del service worker):
 - Vercel / Netlify / GitHub Pages → arrastrar la carpeta `panel/`.
@@ -70,7 +86,7 @@ Cualquier hosting estático con **HTTPS** (requisito del service worker):
 |---|---|
 | `index.html` | Estructura: vista lista + vista conversación |
 | `app.js` | Lógica: JSONP GET, POST toggle, caché, render, PWA |
-| `styles.css` | Estilos mobile-first |
+| `styles.css` | Estilos mobile-first + breakpoints tablet (≥720px) y desktop master-detail (≥900px) |
 | `sw.js` | Service worker (offline / instalable) |
 | `manifest.webmanifest` | Manifiesto PWA |
 | `gas.gs` | Apps Script (pegar en la Sheet) |
