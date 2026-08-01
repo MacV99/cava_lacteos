@@ -24,18 +24,26 @@ Cliente WhatsApp → Meta → (URL pública HTTPS) → POST /webhook → store �
 panel (responder)  → POST /api/send → Graph API → Meta → Cliente WhatsApp
 ```
 
-Backend Node/Express (ESM, `fetch` nativo, Node 20+). Sin base de datos: las
-conversaciones se guardan en `data/conversations.json` (gitignored).
+Backend Node/Express (ESM, `fetch` nativo, Node 20+). **Persistencia intercambiable**:
+si defines `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`, las conversaciones viven en
+**Postgres (Supabase)**; si no, caen a `data/conversations.json` local (dev/fallback).
+El store mantiene todo en memoria (lecturas rápidas) y hace write-through al backend elegido.
+
+> En Render el disco es **efímero** → el JSON se borra en cada deploy. Por eso producción
+> usa Supabase (ver `supabase/schema.sql`).
 
 ```
 src/
   config.js     lee .env
-  store.js      conversaciones + persistencia en disco (debounce 400ms)
-  whatsapp.js   envío (sendText/sendTemplate/markRead) + descarga de media
+  supabase.js   cliente Supabase (service-role; solo backend)
+  store.js      conversaciones en memoria + write-through (Supabase | JSON)
+  whatsapp.js   envío (sendText/sendTemplate/markRead) + descarga de media + salud del número
   handler.js    procesa el webhook (entrantes + acuses de estado)
   errors.js     mapa de códigos de error de Meta → lenguaje natural
   server.js     Express: panel + API + /webhook
 public/         el panel (index.html, styles.css, app.js)
+supabase/       schema.sql (tablas conversations + messages, RLS)
+scripts/        migrate-json-to-supabase.js (import único del JSON)
 ```
 
 ## Puesta en marcha

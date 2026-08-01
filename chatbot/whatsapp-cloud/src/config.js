@@ -43,6 +43,9 @@ export const config = {
   graphVersion: process.env.GRAPH_VERSION || 'v25.0',
   port: Number(process.env.PORT || 3000),
   panelPassword: process.env.PANEL_PASSWORD || '',
+  // Supabase (opcional): si ambos están, el store persiste en Postgres; si no, en JSON local.
+  supabaseUrl: process.env.SUPABASE_URL || '',
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 };
 
 export const graphBase = () => `https://graph.facebook.com/${config.graphVersion}`;
