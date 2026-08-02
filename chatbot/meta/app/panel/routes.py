@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.panel import auth
-from app.whatsapp import graph, store
+from app.whatsapp import graph, orders_store, store
 from app.whatsapp.errors import ERROR_FALLBACK, ERROR_MAP, explain_error, full_message
 
 router = APIRouter()
@@ -67,6 +67,23 @@ async def api_conversations():
             "windowMsLeft": max(0, WINDOW_MS - (now - last_in)) if last_in > 0 else 0,
         })
     return {"conversations": out, "serverNow": now}
+
+
+# ── Pedidos (migración Sheets → Supabase) ────────────────────────────────────
+@router.get("/api/orders")
+async def api_orders():
+    return {"orders": await orders_store.list_orders(), "serverNow": _now()}
+
+
+@router.post("/api/orders/estado")
+async def api_orders_estado(request: Request):
+    body = await request.json() or {}
+    order_id, estado = body.get("id"), body.get("estado")
+    if order_id is None or not estado:
+        return JSONResponse({"error": "faltan id y estado"}, status_code=400)
+    if not await orders_store.set_estado(order_id, estado):
+        return JSONResponse({"error": "estado inválido o Supabase no configurado"}, status_code=400)
+    return {"ok": True, "estado": estado}
 
 
 # ── Envío ────────────────────────────────────────────────────────────────────

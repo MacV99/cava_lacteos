@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -26,6 +27,10 @@ _MAX_SEEN = 2000
 _scheduler = AsyncIOScheduler()
 
 _PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
+
+# En algunos entornos (Windows) el .webmanifest no está mapeado; sin esto
+# StaticFiles lo sirve como octet-stream y el navegador ignora el manifest PWA.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
 @asynccontextmanager

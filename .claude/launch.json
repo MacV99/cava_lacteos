@@ -4,8 +4,9 @@
     {
       "name": "panel",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "panel", "-l", "5050"],
-      "port": 5050
+      "runtimeArgs": ["serve", "chatbot/meta/public"],
+      "port": 5050,
+      "autoPort": true
     },
     {
       "name": "wa-cloud",
@@ -13,6 +14,13 @@
       "runtimeArgs": ["src/server.js"],
       "cwd": "chatbot/whatsapp-cloud",
       "port": 3000
+    },
+    {
+      "name": "cava-meta",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--port", "8099"],
+      "cwd": "chatbot/meta",
+      "port": 8099
     }
   ]
 }

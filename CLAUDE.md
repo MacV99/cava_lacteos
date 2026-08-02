@@ -48,6 +48,13 @@ WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Inst
 - **Persistencia del panel:** conversaciones en **Supabase** (`app/whatsapp/store.py`, vía
   PostgREST con httpx; sin `SUPABASE_URL` cae a JSON local). El cerebro sigue guardando su estado
   de WhatsApp en Sheets (`actividad`, `canal='whatsapp'`) — dos almacenes distintos por ahora.
+- **Pedidos en el panel (migración Sheets→Supabase, Fase 2):** cuando la IA concreta una
+  venta el bot hace **dual-write** — sigue escribiendo la hoja `pedidos` (`app/sheets/orders.py`)
+  Y hace write-through a la tabla `pedidos` de Supabase (`app/whatsapp/orders_store.py`, llamado
+  desde `orchestrator.py` tras `register_order`). El panel tiene pantalla **Pedidos** (botón 📦
+  con badge de nuevos): `GET /api/orders` lista y `POST /api/orders/estado` marca
+  despachado/cancelado/nuevo. La tabla `pedidos` ya existe en la Supabase de Cava. Cuando el
+  dual-write esté probado en prod, se retira la hoja de Sheets.
 - **Keep-alive:** free tier duerme el servicio a los ~15 min. Un pinger externo gratuito
   (cron-job.org / UptimeRobot) a `GET /healthz` cada ~10 min lo mantiene despierto. Render Cron
   Jobs es de pago; por eso el pinger externo.

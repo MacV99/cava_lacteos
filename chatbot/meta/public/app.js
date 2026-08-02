@@ -8,6 +8,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxAETSMOzO6ozHdy88OoXiK
 const POLL_WA_MS = 3000;
 const POLL_META_MS = 6000;
 const POLL_HEALTH_MS = 30000;
+const POLL_ORDERS_MS = 15000;
 
 // Metadatos de cada canal para el modal de estado.
 const CH_META = {
@@ -666,6 +667,119 @@ function wireDropdown() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
+// ── Pedidos (Supabase, migración gradual desde Sheets) ─────────────────────
+let orders = [];
+let ordersFilter = 'todos';
+let ordersLoaded = false;
+
+function fmtMoney(v) {
+  const n = Number(v);
+  if (!isFinite(n)) return String(v ?? '');
+  return '$' + n.toLocaleString('es-CO');
+}
+function fmtOrderDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ', ' +
+         d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
+const ESTADO_LABEL = { nuevo: 'Nuevo', despachado: 'Despachado', cancelado: 'Cancelado' };
+function orderChannel(p) {
+  const r = String(p || '').toLowerCase();
+  return r === 'instagram' ? 'instagram' : (r === 'messenger' || r === 'page') ? 'messenger' : 'whatsapp';
+}
+
+async function pollOrders() {
+  try {
+    const r = await fetch('/api/orders');
+    if (r.status === 401) { panelStarted = false; showLogin(); return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    orders = data.orders || [];
+    ordersLoaded = true;
+  } catch { /* deja lo que había */ }
+  renderOrdersBadge();
+  if (currentSection === 'orders') renderOrders();
+}
+
+function renderOrdersBadge() {
+  const n = orders.filter((o) => o.estado === 'nuevo').length;
+  const b = $('nav-orders-badge');
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.classList.toggle('hidden', n === 0);
+}
+
+// ── Navegación por secciones ────────────────────────────────────────────────
+let currentSection = 'chats';
+function setSection(name) {
+  currentSection = name;
+  document.querySelectorAll('#nav .nav__tab').forEach((t) => t.classList.toggle('is-active', t.dataset.section === name));
+  $('section-chats').classList.toggle('section--active', name === 'chats');
+  $('section-orders').classList.toggle('section--active', name === 'orders');
+  if (name === 'orders') { if (ordersLoaded) renderOrders(); else pollOrders(); }
+}
+
+function renderOrders() {
+  $('orders-loading').classList.add('hidden');
+  const rows = ordersFilter === 'todos' ? orders : orders.filter((o) => o.estado === ordersFilter);
+  $('orders-count').textContent = orders.length ? `${orders.length}` : '';
+  const box = $('orders-list'), empty = $('orders-empty');
+  if (!rows.length) {
+    box.innerHTML = '';
+    empty.textContent = ordersLoaded
+      ? (orders.length ? 'Sin pedidos en este filtro.' : 'Aún no hay pedidos. Cuando la IA concrete una venta, aparecerá aquí.')
+      : 'Cargando…';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  box.innerHTML = rows.map(orderCardHTML).join('');
+  box.querySelectorAll('.oaction').forEach((el) => el.addEventListener('click', () => setOrderEstado(el.dataset.id, el.dataset.estado)));
+}
+
+function orderCardHTML(o) {
+  const ch = orderChannel(o.plataforma);
+  const tel = String(o.telefono || '').replace(/\s+/g, '');
+  const row = (ico, val) => `<div class="mrow"><span class="mrow__ico" aria-hidden="true">${ico}</span><span class="mrow__val">${val}</span></div>`;
+  const telHtml = tel ? row('📞', `<a href="tel:${esc(tel)}">${esc(o.telefono)}</a>`) : '';
+  const dirHtml = o.direccion ? row('📍', esc(o.direccion)) : '';
+  const pagoHtml = o.pago ? row('💳', esc(o.pago)) : '';
+  const acciones = o.estado === 'nuevo'
+    ? `<button class="oaction oaction--ok" data-id="${esc(o.id)}" data-estado="despachado">✓ Despachar</button>
+       <button class="oaction oaction--danger" data-id="${esc(o.id)}" data-estado="cancelado">Cancelar</button>`
+    : `<button class="oaction" data-id="${esc(o.id)}" data-estado="nuevo">↩ Reabrir</button>`;
+  return `<div class="order-card order-card--${o.estado}">
+    <div class="order-card__head">
+      <span class="canal-badge canal-badge--${ch}" aria-hidden="true">${canalIcon(ch)}</span>
+      <div class="order-card__who">
+        <div class="order-card__name">${esc(o.nombre || 'Sin nombre')}</div>
+        <div class="order-card__time">${esc(fmtOrderDate(o.createdAt))}</div>
+      </div>
+      <span class="estado-chip estado-chip--${o.estado}">${esc(ESTADO_LABEL[o.estado] || o.estado)}</span>
+    </div>
+    ${o.pedido ? `<div class="order-card__items">${linkify(esc(o.pedido))}</div>` : ''}
+    <div class="order-card__meta">${telHtml}${dirHtml}${pagoHtml}</div>
+    <div class="order-card__foot">
+      <div class="order-card__total"><small>Total</small>${esc(fmtMoney(o.total))}</div>
+      <div class="order-card__actions">${acciones}</div>
+    </div>
+  </div>`;
+}
+
+async function setOrderEstado(id, estado) {
+  const o = orders.find((x) => String(x.id) === String(id)); if (!o) return;
+  const prev = o.estado; o.estado = estado;   // optimista
+  renderOrders(); renderOrdersBadge();
+  try {
+    const r = await fetch('/api/orders/estado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, estado }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    notify(estado === 'despachado' ? 'Pedido despachado' : estado === 'cancelado' ? 'Pedido cancelado' : 'Pedido reabierto');
+  } catch {
+    o.estado = prev; renderOrders(); renderOrdersBadge(); notify('No se pudo actualizar el pedido', 'err');
+  }
+}
+
 // ── Login ─────────────────────────────────────────────────────────────────
 let panelStarted = false;
 function showLogin() { $('login').classList.remove('hidden'); setTimeout(() => $('login-pass').focus(), 50); }
@@ -695,12 +809,13 @@ function startPanel() {
   if (panelStarted) return;
   panelStarted = true;
   fetch('/api/errors.json').then((r) => r.json()).then((d) => { errorMap = d; }).catch(() => {});
-  pollWA(); pollMeta(); pollHealth();
+  pollWA(); pollMeta(); pollHealth(); pollOrders();
   if (!intervalsSet) {
     intervalsSet = true;
     setInterval(pollWA, POLL_WA_MS);
     setInterval(pollMeta, POLL_META_MS);
     setInterval(pollHealth, POLL_HEALTH_MS);
+    setInterval(pollOrders, POLL_ORDERS_MS);
   }
 }
 
@@ -719,6 +834,13 @@ function wire() {
   $('btn-back').addEventListener('click', backToList);
   $('btn-refresh').addEventListener('click', () => { listSig = ''; threadSig = ''; pollWA(); pollMeta(); pollHealth(); });
   $('btn-status').addEventListener('click', openStatus);
+  $('nav').querySelectorAll('.nav__tab').forEach((t) => t.addEventListener('click', () => setSection(t.dataset.section)));
+  $('btn-orders-refresh').addEventListener('click', () => { $('orders-loading').classList.remove('hidden'); pollOrders(); });
+  $('orders-filters').querySelectorAll('.ofilter').forEach((b) => b.addEventListener('click', () => {
+    ordersFilter = b.dataset.estado;
+    $('orders-filters').querySelectorAll('.ofilter').forEach((o) => o.classList.toggle('is-active', o === b));
+    renderOrders();
+  }));
   $('status-modal').querySelectorAll('[data-close-status]').forEach((el) => el.addEventListener('click', closeStatus));
   $('search').addEventListener('input', (e) => { searchTerm = e.target.value; listSig = ''; renderList(); });
   wireDropdown();

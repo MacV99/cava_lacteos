@@ -38,6 +38,7 @@ from app.messenger.client import get_profile_name, send_reaction, send_text, sen
 from app.messenger.parser import parse
 from app.sheets import activity, cache as sheets_cache, orders
 from app.utils import bogota_time
+from app.whatsapp import orders_store
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +210,20 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
             )
         except Exception as exc:
             logger.error("Error guardando pedido: %s", exc)
+        # Write-through al panel (Supabase) — migración gradual Sheets → Supabase.
+        try:
+            await orders_store.save_order(
+                psid,
+                pedido_datos["nombre"],
+                pedido_datos["telefono"],
+                pedido_datos["direccion"],
+                pedido_datos["pago"],
+                pedido_datos["pedido"],
+                pedido_datos["total"],
+                platform_name,
+            )
+        except Exception as exc:
+            logger.error("Error guardando pedido en Supabase: %s", exc)
 
     # ── ENVIAR RESPUESTA ─────────────────────────────────────────────────────
     await _safe_send(psid, msg1, platform_name)
