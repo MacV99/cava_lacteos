@@ -12,6 +12,7 @@ Tabla (crear en la Supabase de Cava, SQL en el README/instrucciones):
 """
 import asyncio
 import logging
+import uuid
 
 from app.sheets import orders as sheets_orders
 from app.whatsapp import supabase as sb
@@ -72,6 +73,35 @@ async def save_order(
             await asyncio.sleep(0.6 * attempt)
     logger.error("save_order: pedido NO guardado en Supabase tras %d intentos: %s", _SAVE_RETRIES, row)
     return False
+
+
+async def create_order(data: dict) -> bool:
+    """Crea un pedido MANUAL desde el panel (no viene de la IA). Sin Supabase, no-op.
+
+    plataforma='manual' y un origen_key único (uuid) para excluirlo de la adopción por
+    contenido de reconcile_from_sheets (que solo debe tocar filas viejas sin key de Sheets).
+    Devuelve True si se insertó.
+    """
+    if not sb.enabled:
+        return False
+    total = (str(data.get("total") or "").strip()) or None  # columna numérica: '' → null
+    row = {
+        "sender_id": "",  # pedido manual: no hay chat de origen
+        "nombre": (data.get("nombre") or "").strip(),
+        "telefono": (data.get("telefono") or "").strip(),
+        "direccion": (data.get("direccion") or "").strip(),
+        "pago": (data.get("pago") or "").strip(),
+        "pedido": (data.get("pedido") or "").strip(),
+        "total": total,
+        "plataforma": "manual",
+        "estado": "pendiente",
+        "origen_key": "manual:" + uuid.uuid4().hex,
+    }
+    try:
+        return await sb.insert("pedidos", row)
+    except Exception as exc:
+        logger.error("create_order: no se pudo crear pedido manual: %s", exc)
+        return False
 
 
 def _tuple(sender_id, telefono, pedido, total) -> tuple:

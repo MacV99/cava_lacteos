@@ -4,8 +4,11 @@
 // Los assets estáticos (íconos, manifest) van cache-first. Los datos (/api/*)
 // NUNCA se cachean: siempre a la red.
 //
-// Al cambiar código, subir CACHE_VERSION → el SW viejo se limpia al activarse.
-const CACHE_VERSION = 'cava-v1';
+// La versión la inyecta el server en cada deploy (commit SHA de Render, ver
+// main.py /sw.js). Así, cada push cambia estos bytes → el navegador detecta un SW
+// nuevo, lo instala, hace skipWaiting y la app se recarga sola (ver index.html).
+// En local/sin substituir queda el literal '__BUILD_ID__' (estable, no rompe).
+const CACHE_VERSION = 'cava-__BUILD_ID__';
 const SHELL = [
   '/',
   '/index.html',

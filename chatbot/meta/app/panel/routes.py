@@ -75,6 +75,16 @@ async def api_orders():
     return {"orders": await orders_store.list_orders(), "serverNow": _now()}
 
 
+@router.post("/api/orders/crear")
+async def api_orders_crear(request: Request):
+    body = await request.json() or {}
+    if not any((body.get(k) or "").strip() for k in orders_store.CAMPOS_EDITABLES):
+        return JSONResponse({"error": "el pedido está vacío"}, status_code=400)
+    if not await orders_store.create_order(body):
+        return JSONResponse({"error": "no se pudo crear (Supabase no configurado o falló)"}, status_code=400)
+    return {"ok": True}
+
+
 @router.post("/api/orders/estado")
 async def api_orders_estado(request: Request):
     body = await request.json() or {}

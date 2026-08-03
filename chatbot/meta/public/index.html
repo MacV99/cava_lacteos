@@ -74,8 +74,8 @@
         <ul class="dropdown__menu hidden" id="canal-menu" role="listbox" aria-label="Filtrar por canal">
           <li role="option" data-value="todos" class="dropdown__opt is-selected">Todos los canales</li>
           <li role="option" data-value="whatsapp" class="dropdown__opt"><span class="dot dot--whatsapp"></span>WhatsApp</li>
-          <li role="option" data-value="messenger" class="dropdown__opt is-disabled" aria-disabled="true"><span class="dot dot--messenger"></span>Messenger<span class="soon-tag">Próximamente</span></li>
-          <li role="option" data-value="instagram" class="dropdown__opt is-disabled" aria-disabled="true"><span class="dot dot--instagram"></span>Instagram<span class="soon-tag">Próximamente</span></li>
+          <li role="option" data-value="messenger" class="dropdown__opt is-disabled" aria-disabled="true"><span class="dot dot--messenger"></span>Messenger</li>
+          <li role="option" data-value="instagram" class="dropdown__opt is-disabled" aria-disabled="true"><span class="dot dot--instagram"></span>Instagram</li>
         </ul>
       </div>
     </div>
@@ -161,6 +161,9 @@
     <div id="blocked-banner" class="window-closed hidden">
       🚫 Contacto bloqueado. Desbloquéalo desde el menú ⋯ para volver a escribirle.
     </div>
+    <div id="readonly-banner" class="window-closed hidden">
+      🔒 Canal en solo lectura. Puedes ver la conversación, pero responder no está habilitado en este plan.
+    </div>
   </section>
 
     </div><!-- /section-chats -->
@@ -173,6 +176,7 @@
         <h1>Pedidos</h1>
         <span id="orders-count" class="topbar__count"></span>
       </div>
+      <button id="btn-order-new" class="icon-btn" title="Nuevo pedido manual" aria-label="Nuevo pedido">＋</button>
       <button id="btn-orders-refresh" class="icon-btn" title="Actualizar" aria-label="Actualizar">↻</button>
     </header>
 
@@ -242,7 +246,7 @@
     <div class="modal__backdrop" data-close-order></div>
     <div class="modal__card">
       <header class="modal__head">
-        <h2>Editar pedido</h2>
+        <h2 id="order-modal-title">Editar pedido</h2>
         <button class="icon-btn" data-close-order aria-label="Cerrar">✕</button>
       </header>
       <form id="order-form" class="order-form">
@@ -270,10 +274,31 @@
   </button>
 
   <script>
-    // ── PWA: registro del service worker + prompt de instalación ──────────
+    // ── PWA: registro del service worker + auto-actualización ─────────────
+    // Cada deploy cambia el build id del SW (ver main.py /sw.js). El navegador
+    // instala el SW nuevo; cuando se activa, recargamos la página sola → el
+    // usuario ve la versión nueva sin Ctrl+Shift+F5.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch((e) => console.error('SW error:', e));
+        // updateViaCache:'none' → el script del SW nunca se sirve de cache HTTP.
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+          .then((reg) => {
+            reg.addEventListener('updatefound', () => {
+              const nw = reg.installing;
+              if (!nw) return;
+              nw.addEventListener('statechange', () => {
+                // Solo recarga si YA había un SW controlando (no en la 1ª visita).
+                if (nw.state === 'activated' && navigator.serviceWorker.controller) {
+                  window.location.reload();
+                }
+              });
+            });
+            // Al volver a la pestaña, busca si hubo deploy nuevo.
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') reg.update();
+            });
+          })
+          .catch((e) => console.error('SW error:', e));
       });
     }
     (function () {

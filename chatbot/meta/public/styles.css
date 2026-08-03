@@ -58,8 +58,8 @@ body {
 .nav__tab:hover { color: var(--c600); }
 .nav__tab.is-active { color: var(--ink); }
 .nav__tab.is-active::before {
-  content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 26px; height: 3px; border-radius: 0 0 3px 3px; background: var(--ink);
+  content: ""; position: absolute; top: .25rem; left: 50%; transform: translateX(-50%);
+  width: 26px; height: 3px; border-radius: 3px; background: var(--ink);
 }
 .nav__badge {
   position: absolute; top: .28rem; left: calc(50% + .55rem); min-width: 17px; height: 17px;
@@ -173,13 +173,6 @@ body {
 .dropdown__opt.is-disabled { color: var(--c400); cursor: not-allowed; }
 .dropdown__opt.is-disabled:hover { background: none; }
 .dropdown__opt.is-disabled .dot { opacity: .4; }
-
-/* Tag "Próximamente" para canales fuera del plan actual (Messenger/Instagram) */
-.soon-tag {
-  margin-left: auto; font-size: .62rem; font-weight: 600; letter-spacing: .02em;
-  text-transform: uppercase; color: var(--c500); background: var(--c150);
-  padding: .12rem .4rem; border-radius: 999px; white-space: nowrap;
-}
 .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .dot--whatsapp  { background: var(--wa); }
 .dot--messenger { background: var(--msg); }
@@ -195,7 +188,7 @@ body {
 .chat-row + .chat-row::before { content: ""; position: absolute; top: 0; left: 4rem; right: .7rem; border-top: 1px solid var(--c150); }
 .chat-row:hover::before, .chat-row:hover + .chat-row::before { border-color: transparent; }
 .chat-row--active { background: var(--c0); box-shadow: var(--shadow-sm); }
-.chat-row--active::after { content: ""; position: absolute; left: 0; top: 12%; bottom: 12%; width: 3px; border-radius: 0 3px 3px 0; background: var(--ink); }
+.chat-row--active::after { content: ""; position: absolute; left: .3rem; top: 18%; bottom: 18%; width: 3px; border-radius: 3px; background: var(--ink); }
 .chat-row__info { flex: 1; min-width: 0; }
 .chat-row__name { font-weight: 600; font-size: .96rem; letter-spacing: -0.01em; }
 .chat-row__preview { color: var(--c500); font-size: .82rem; margin-top: .15rem; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -217,6 +210,7 @@ body {
 .canal-badge--whatsapp  { color: #1ea952; }
 .canal-badge--messenger { color: #2a7fd4; }
 .canal-badge--instagram { color: #c13584; }
+.canal-badge--manual    { color: var(--c600); }
 .canal-badge--unknown   { background: var(--c100); color: var(--c400); }
 .canal-badge--unknown::before { content: "?"; font-size: .9rem; }
 .topbar__contact .canal-badge { width: 34px; height: 34px; border-radius: 10px; }
@@ -520,7 +514,7 @@ body {
     border-top: 0; border-right: 1px solid var(--c200); background: var(--c50); padding: .6rem 0; gap: .2rem;
   }
   .nav__tab { flex: 0 0 auto; padding: .75rem 0; gap: .28rem; font-size: .66rem; }
-  .nav__tab.is-active::before { top: 50%; left: 0; transform: translateY(-50%); width: 3px; height: 26px; border-radius: 0 3px 3px 0; }
+  .nav__tab.is-active::before { top: 50%; left: .3rem; transform: translateY(-50%); width: 3px; height: 26px; border-radius: 3px; }
   .nav__badge { left: calc(50% + .6rem); }
   body.chat-open .nav { display: flex; }
   .sections { flex: 1; min-width: 0; }

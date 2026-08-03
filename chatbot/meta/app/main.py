@@ -3,6 +3,8 @@ import hashlib
 import hmac
 import logging
 import mimetypes
+import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -28,6 +30,11 @@ _MAX_SEEN = 2000
 _scheduler = AsyncIOScheduler()
 
 _PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
+
+# ID de build para invalidar cache del PWA en cada deploy. Render expone el SHA del
+# commit en RENDER_GIT_COMMIT; en local cae al timestamp de arranque (cambia por
+# reinicio). Se inyecta en /sw.js → cada deploy = SW nuevo = la app se recarga sola.
+_BUILD_ID = (os.getenv("RENDER_GIT_COMMIT") or str(int(time.time())))[:12]
 
 # En algunos entornos (Windows) el .webmanifest no está mapeado; sin esto
 # StaticFiles lo sirve como octet-stream y el navegador ignora el manifest PWA.
@@ -184,7 +191,34 @@ def _verify_signature(request: Request, body: bytes, platform: str | None = None
     raise HTTPException(status_code=403, detail="Firma inválida")
 
 
+# ── Service worker: servido dinámico para inyectar el build id ────────────────
+# Debe ir ANTES del mount estático (las rutas explícitas ganan). Reemplaza el
+# placeholder __BUILD_ID__ del archivo por el SHA del deploy → cada push cambia el
+# byte del SW → el navegador instala el SW nuevo y la app se recarga sola.
+_SW_TEXT = (_PUBLIC_DIR / "sw.js").read_text(encoding="utf-8").replace("__BUILD_ID__", _BUILD_ID)
+
+
+@app.get("/sw.js")
+async def service_worker():
+    return Response(
+        content=_SW_TEXT,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache"},  # revalida siempre; nunca sirve un SW viejo
+    )
+
+
 # ── Panel: rutas /api/* + UI estática ─────────────────────────────────────────
+class _NoCacheStatic(StaticFiles):
+    """Sirve los estáticos con `Cache-Control: no-cache`: el navegador revalida en
+    cada carga (ETag → 304 barato si no cambió). Así un deploy nuevo se ve sin
+    Ctrl+Shift+F5, sin renombrar archivos ni build step."""
+
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 app.include_router(panel_router)
-# El mount de estáticos va AL FINAL: las rutas explícitas (/api, /webhook…) ganan.
-app.mount("/", StaticFiles(directory=str(_PUBLIC_DIR), html=True), name="panel")
+# El mount de estáticos va AL FINAL: las rutas explícitas (/api, /webhook, /sw.js…) ganan.
+app.mount("/", _NoCacheStatic(directory=str(_PUBLIC_DIR), html=True), name="panel")

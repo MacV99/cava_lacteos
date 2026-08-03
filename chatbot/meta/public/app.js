@@ -17,11 +17,10 @@ const CH_META = {
   instagram: { name: 'Instagram', color: '#c13584' },
 };
 
-// Alcance del plan: solo WhatsApp está contratado y activo. Messenger e Instagram
-// quedan visibles en la UI (en gris, "Próximamente") como mejora futura, pero SIN
-// traer datos ni procesarse en el panel. Poner true para reactivar tras cotizar.
+// Alcance del plan: solo WhatsApp está HABILITADO PARA USO (responder, IA). Messenger e
+// Instagram sí muestran sus chats (data en vivo, como demo de mejora futura) pero quedan
+// en SOLO LECTURA: no se puede enviar ni togglear IA. Poner true para habilitarlos tras cotizar.
 const CHANNELS_ENABLED = { whatsapp: true, messenger: false, instagram: false };
-const META_ENABLED = CHANNELS_ENABLED.messenger || CHANNELS_ENABLED.instagram;
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,7 +28,10 @@ const $ = (id) => document.getElementById(id);
 const ICON_WA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm5.8 14.16c-.24.68-1.42 1.31-1.96 1.36-.5.06-1.13.08-1.83-.11-.42-.13-.96-.31-1.65-.6-2.91-1.26-4.81-4.19-4.96-4.39-.14-.2-1.19-1.58-1.19-3.01s.75-2.14 1.02-2.43c.27-.29.58-.36.78-.36l.56.01c.18.01.42-.07.66.5.24.59.82 2.02.89 2.17.07.14.12.31.02.51-.1.2-.15.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.29-.13.57.16.27.72 1.18 1.54 1.91 1.06.94 1.95 1.24 2.23 1.38.27.14.43.12.59-.07.16-.2.68-.79.86-1.06.18-.27.36-.22.61-.13.25.09 1.58.74 1.85.88.27.14.45.2.51.31.07.12.07.66-.17 1.34z"/></svg>';
 const ICON_FB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.21 2 11.4c0 2.96 1.46 5.6 3.75 7.32V22l3.43-1.88c.91.25 1.87.39 2.82.39 5.52 0 10-4.21 10-9.4S17.52 2 12 2zm1.02 12.66l-2.55-2.72-4.97 2.72 5.47-5.8 2.61 2.72 4.91-2.72-5.47 5.8z"/></svg>';
 const ICON_IG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.05 1.8.25 2.2.42.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.17.4.37 1 .42 2.2.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.05 1.2-.25 1.8-.42 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.17-1 .37-2.2.42-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.05-1.8-.25-2.2-.42-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.17-.4-.37-1-.42-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.05-1.2.25-1.8.42-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.17 1-.37 2.2-.42C8.4 2.2 8.8 2.2 12 2.2zm0 3.2A6.6 6.6 0 1 0 18.6 12 6.6 6.6 0 0 0 12 5.4zm0 10.9A4.3 4.3 0 1 1 16.3 12 4.3 4.3 0 0 1 12 16.3zm6.8-11.1a1.54 1.54 0 1 1-1.54-1.54 1.54 1.54 0 0 1 1.54 1.54z"/></svg>';
-function canalIcon(ch) { return ch === 'instagram' ? ICON_IG : ch === 'messenger' ? ICON_FB : ICON_WA; }
+const ICON_MANUAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+function canalIcon(ch) {
+  return ch === 'instagram' ? ICON_IG : ch === 'messenger' ? ICON_FB : ch === 'manual' ? ICON_MANUAL : ICON_WA;
+}
 
 // ── Estado ────────────────────────────────────────────────────────────────
 let waConvs = [];      // normalizadas desde este backend
@@ -138,7 +140,6 @@ async function gasPost(payload) {
   return json;
 }
 async function pollMeta() {
-  if (!META_ENABLED) { metaConvs = []; metaOk = true; return; }  // fuera de alcance: Messenger/IG deshabilitados
   try {
     const chats = await jsonp(GAS_URL);
     metaConvs = (Array.isArray(chats) ? chats : [])
@@ -207,12 +208,10 @@ function channelStates() {
     }
   }
   const mkMeta = (key) => {
-    if (!CHANNELS_ENABLED[key]) {
-      return { key, st: 'off', detail: 'No incluido en el plan actual · disponible como mejora futura.' };
-    }
     const n = metaConvs.filter((c) => c.channel === key).length;
+    const ro = CHANNELS_ENABLED[key] ? '' : ' · solo lectura';
     return metaOk
-      ? { key, st: 'ok', detail: `Datos llegando · ${n} chat${n === 1 ? '' : 's'}` }
+      ? { key, st: CHANNELS_ENABLED[key] ? 'ok' : 'off', detail: `${n} chat${n === 1 ? '' : 's'}${ro}` }
       : { key, st: 'err', detail: 'Sin conexión con el Apps Script (Google Sheet).' };
   };
   return [wa, mkMeta('messenger'), mkMeta('instagram')];
@@ -226,7 +225,7 @@ function statusRowsHTML(states) {
     return `<div class="status-row${s.st === 'off' ? ' status-row--off' : ''}">
       <span class="status-row__icon" style="color:${meta.color}">${canalIcon(s.key)}</span>
       <div class="status-row__body">
-        <div class="status-row__name">${meta.name}${s.st === 'off' ? '<span class="soon-tag">Próximamente</span>' : ''}</div>
+        <div class="status-row__name">${meta.name}</div>
         <div class="status-row__detail">${esc(s.detail)}</div>
       </div>
       <span class="status-row__dot status-row__dot--${dotCls}" title="${title}"></span>
@@ -355,9 +354,12 @@ function renderThread() {
   badge.className = 'canal-badge canal-badge--' + c.channel;
   badge.innerHTML = canalIcon(c.channel);
 
-  // Controles según canal: WA → ventana 24h + media/bloqueo; toggle IA en los 3 canales
+  // canUse = canal habilitado para uso (responder / IA). Solo WhatsApp; Messenger/IG = solo lectura.
+  const canUse = CHANNELS_ENABLED[c.channel];
+  // Controles según canal: WA → ventana 24h + media/bloqueo; toggle IA solo en canales habilitados
   $('window-badge').classList.toggle('hidden', !isWA);
   $('ai-switch').classList.remove('hidden');
+  $('chat-toggle').disabled = !canUse;
   $('btn-attach').classList.toggle('hidden', !isWA);
   $('btn-mic').classList.toggle('hidden', !isWA);
   // items del menú ⋯: renombrar siempre; bloquear/eliminar solo WhatsApp
@@ -375,12 +377,20 @@ function renderThread() {
     $('composer').classList.toggle('hidden', !canWrite);
     $('blocked-banner').classList.toggle('hidden', !c.blocked);
     $('window-closed').classList.toggle('hidden', c.blocked || c.windowOpen);
-  } else {
+    $('readonly-banner').classList.add('hidden');
+  } else if (canUse) {
     $('composer-input').disabled = false;
     $('composer-send').disabled = false;
     $('composer').classList.remove('hidden');
     $('window-closed').classList.add('hidden');
     $('blocked-banner').classList.add('hidden');
+    $('readonly-banner').classList.add('hidden');
+  } else {
+    // Solo lectura: canal fuera del plan (Messenger/IG). Se ven los mensajes, no se responde.
+    $('composer').classList.add('hidden');
+    $('window-closed').classList.add('hidden');
+    $('blocked-banner').classList.add('hidden');
+    $('readonly-banner').classList.remove('hidden');
   }
 
   const sig = threadSignature(c);
@@ -461,6 +471,7 @@ async function markReadWA(waId) {
 // ── Enviar ──────────────────────────────────────────────────────────────────
 async function onComposerSubmit() {
   const c = byKey[activeKey]; if (!c) return;
+  if (!CHANNELS_ENABLED[c.channel]) return;   // canal en solo lectura
   const text = $('composer-input').value.trim();
   if (pendingFile) { await sendMediaFile(c, pendingFile, text); return; }
   if (!text) return;
@@ -618,6 +629,7 @@ async function doBlockToggle() {
 // ── Toggle IA — WhatsApp (panel/Supabase) o Messenger/IG (GAS/Sheets) ────────
 async function toggleAI(on) {
   const c = byKey[activeKey]; if (!c) return;
+  if (!CHANNELS_ENABLED[c.channel]) { $('chat-toggle').checked = c.aiOn !== false; return; }  // solo lectura
   c.aiOn = on; listSig = '';           // optimista
   try {
     if (c.channel === 'whatsapp') {
@@ -699,7 +711,7 @@ function fmtOrderDate(iso) {
 const ESTADO_LABEL = { pendiente: 'Pendiente', despachado: 'Despachado' };
 function orderChannel(p) {
   const r = String(p || '').toLowerCase();
-  return r === 'instagram' ? 'instagram' : (r === 'messenger' || r === 'page') ? 'messenger' : 'whatsapp';
+  return r === 'instagram' ? 'instagram' : (r === 'messenger' || r === 'page') ? 'messenger' : r === 'manual' ? 'manual' : 'whatsapp';
 }
 
 async function pollOrders() {
@@ -798,6 +810,9 @@ let editingOrderId = null;
 function openOrderModal(id) {
   const o = orders.find((x) => String(x.id) === String(id)); if (!o) return;
   editingOrderId = o.id;
+  $('order-modal-title').textContent = 'Editar pedido';
+  $('order-edit-delete').classList.remove('hidden');
+  $('order-edit-save').textContent = 'Guardar';
   $('order-edit-id').value = o.id;
   $('order-edit-nombre').value = o.nombre || '';
   $('order-edit-telefono').value = o.telefono || '';
@@ -807,12 +822,22 @@ function openOrderModal(id) {
   $('order-edit-total').value = o.total ?? '';
   $('order-modal').classList.remove('hidden');
 }
+// Modal en modo CREAR: pedido manual desde el panel.
+function openOrderCreate() {
+  editingOrderId = null;
+  $('order-modal-title').textContent = 'Nuevo pedido';
+  $('order-edit-delete').classList.add('hidden');   // nada que eliminar aún
+  $('order-edit-save').textContent = 'Crear pedido';
+  ['nombre', 'telefono', 'direccion', 'pago', 'pedido', 'total'].forEach((f) => { $('order-edit-' + f).value = ''; });
+  $('order-edit-id').value = '';
+  $('order-modal').classList.remove('hidden');
+  setTimeout(() => $('order-edit-nombre').focus(), 50);
+}
 function closeOrderModal() { $('order-modal').classList.add('hidden'); editingOrderId = null; }
 
 async function saveOrderEdit(e) {
   e.preventDefault();
-  const id = editingOrderId; if (id == null) return;
-  const patch = {
+  const data = {
     nombre: $('order-edit-nombre').value.trim(),
     telefono: $('order-edit-telefono').value.trim(),
     direccion: $('order-edit-direccion').value.trim(),
@@ -820,15 +845,24 @@ async function saveOrderEdit(e) {
     pedido: $('order-edit-pedido').value.trim(),
     total: $('order-edit-total').value.trim(),
   };
+  const isNew = editingOrderId == null;
+  if (isNew && !Object.values(data).some((v) => v)) { notify('El pedido está vacío', 'err'); return; }
   const btn = $('order-edit-save'); btn.disabled = true;
   try {
-    const r = await fetch('/api/orders/editar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const o = orders.find((x) => String(x.id) === String(id));
-    if (o) Object.assign(o, patch);
-    closeOrderModal(); renderOrders(); notify('Pedido actualizado');
+    if (isNew) {
+      const r = await fetch('/api/orders/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      closeOrderModal(); await pollOrders(); notify('Pedido creado');
+    } else {
+      const id = editingOrderId;
+      const r = await fetch('/api/orders/editar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...data }) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const o = orders.find((x) => String(x.id) === String(id));
+      if (o) Object.assign(o, data);
+      closeOrderModal(); renderOrders(); notify('Pedido actualizado');
+    }
   } catch {
-    notify('No se pudo guardar el pedido', 'err');
+    notify(isNew ? 'No se pudo crear el pedido' : 'No se pudo guardar el pedido', 'err');
   } finally { btn.disabled = false; }
 }
 
@@ -879,7 +913,7 @@ function startPanel() {
   if (!intervalsSet) {
     intervalsSet = true;
     setInterval(pollWA, POLL_WA_MS);
-    if (META_ENABLED) setInterval(pollMeta, POLL_META_MS);
+    setInterval(pollMeta, POLL_META_MS);
     setInterval(pollHealth, POLL_HEALTH_MS);
     setInterval(pollOrders, POLL_ORDERS_MS);
   }
@@ -902,6 +936,7 @@ function wire() {
   $('btn-status').addEventListener('click', openStatus);
   $('nav').querySelectorAll('.nav__tab').forEach((t) => t.addEventListener('click', () => setSection(t.dataset.section)));
   $('btn-orders-refresh').addEventListener('click', () => { $('orders-loading').classList.remove('hidden'); pollOrders(); });
+  $('btn-order-new').addEventListener('click', openOrderCreate);
   $('orders-filters').querySelectorAll('.ofilter').forEach((b) => b.addEventListener('click', () => {
     ordersFilter = b.dataset.estado;
     $('orders-filters').querySelectorAll('.ofilter').forEach((o) => o.classList.toggle('is-active', o === b));
