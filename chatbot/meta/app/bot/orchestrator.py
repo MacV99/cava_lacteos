@@ -51,14 +51,19 @@ _buffer_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 # Se limpia al reiniciar el proceso (así reintenta tras un deploy / App Review).
 _profile_name_tried: set[str] = set()
 
+# Tolerante a las variaciones que suele meter el LLM y que antes descartaban la
+# orden en silencio: tildes (teléfono/dirección), markdown/viñetas antes del campo
+# (**, -, •), mayúsculas, y total con $, puntos o comas de miles. El orden de los
+# campos sí se asume (el prompt lo fija). \W* absorbe adornos antes de la clave.
 _PEDIDO_RE = re.compile(
-    r"PEDIDO_CONFIRMADO\r?\n"
-    r"nombre:\s*(.+)\r?\n"
-    r"telefono:\s*(.+)\r?\n"
-    r"direccion:\s*(.+)\r?\n"
-    r"pago:\s*(.+)\r?\n"
-    r"pedido:\s*(.+)\r?\n"
-    r"total:\s*(\d+)",
+    r"PEDIDO_CONFIRMADO\s*?\r?\n"
+    r"\W*nombre\W*[:：]\s*(.+?)\s*\r?\n"
+    r"\W*tel[eé]fono\W*[:：]\s*(.+?)\s*\r?\n"
+    r"\W*direcci[oó]n\W*[:：]\s*(.+?)\s*\r?\n"
+    r"\W*pago\W*[:：]\s*(.+?)\s*\r?\n"
+    r"\W*pedido\W*[:：]\s*(.+?)\s*\r?\n"
+    r"\W*total\W*[:：]\s*\$?\s*([\d.,]+)",
+    re.IGNORECASE,
 )
 
 
@@ -196,6 +201,9 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
 
     # ── GUARDAR PEDIDO ───────────────────────────────────────────────────────
     if es_pedido and pedido_datos:
+        # Una sola `fecha` compartida por ambos writes → misma origen_key, así la
+        # reconciliación Sheets→Supabase deduplica sin ambigüedad.
+        fecha = bogota_time.format()
         try:
             await asyncio.to_thread(
                 orders.register_order,
@@ -207,10 +215,12 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
                 pedido_datos["pedido"],
                 pedido_datos["total"],
                 platform_name,
+                fecha,
             )
         except Exception as exc:
             logger.error("Error guardando pedido: %s", exc)
         # Write-through al panel (Supabase) — migración gradual Sheets → Supabase.
+        # Si falla (aun con reintentos), el job reconcile_from_sheets lo reintegra luego.
         try:
             await orders_store.save_order(
                 psid,
@@ -221,6 +231,7 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
                 pedido_datos["pedido"],
                 pedido_datos["total"],
                 platform_name,
+                key=orders_store.origen_key(platform_name, psid, fecha),
             )
         except Exception as exc:
             logger.error("Error guardando pedido en Supabase: %s", exc)
@@ -284,18 +295,27 @@ def _parse_reply(raw: str) -> tuple[bool, dict | None, str]:
     if es_pedido:
         match = _PEDIDO_RE.search(raw)
         if match:
-            pedido_datos = {
-                "nombre":    match.group(1).strip(),
-                "telefono":  match.group(2).strip(),
-                "direccion": match.group(3).strip(),
-                "pago":      match.group(4).strip(),
-                "pedido":    match.group(5).strip(),
-                "total":     match.group(6).strip(),
-            }
+            total = re.sub(r"\D", "", match.group(6))  # deja solo dígitos: "$29.000" → "29000"
+            if total:
+                pedido_datos = {
+                    "nombre":    match.group(1).strip(),
+                    "telefono":  match.group(2).strip(),
+                    "direccion": match.group(3).strip(),
+                    "pago":      match.group(4).strip(),
+                    "pedido":    match.group(5).strip(),
+                    "total":     total,
+                }
+            else:
+                logger.error("PEDIDO_CONFIRMADO con total no numérico. raw=%s", raw[:600])
+            # Quitar el bloque técnico: conserva lo que haya antes del marcador y todo
+            # lo que venga tras la línea del total (el mensaje visible). Descarta el
+            # resto de la línea del total (ej: " COP") saltando hasta el siguiente \n.
+            nl = raw.find("\n", match.end())
+            tail = raw[nl:] if nl != -1 else ""
+            visible_text = (raw[:match.start()] + tail).strip()
         else:
-            logger.warning("PEDIDO_CONFIRMADO detectado pero el regex no matcheó. raw=%s", raw[:300])
-        # Remover el bloque técnico del texto visible
-        visible_text = re.sub(r"PEDIDO_CONFIRMADO[\s\S]*?\n\n", "", raw, count=1).strip()
+            logger.error("PEDIDO_CONFIRMADO detectado pero el regex no matcheó. raw=%s", raw[:600])
+            visible_text = re.sub(r"PEDIDO_CONFIRMADO[\s\S]*?\n\n", "", raw, count=1).strip()
         if not visible_text:
             parts = raw.split("\n\n")
             visible_text = "\n\n".join(parts[1:]).strip() if len(parts) > 1 else raw

@@ -55,6 +55,27 @@ WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Inst
   con badge de nuevos): `GET /api/orders` lista y `POST /api/orders/estado` marca
   despachado/cancelado/nuevo. La tabla `pedidos` ya existe en la Supabase de Cava. Cuando el
   dual-write esté probado en prod, se retira la hoja de Sheets.
+- **Confiabilidad del write-through (que ningún pedido se pierda):** el free tier duerme el
+  servicio, y un timeout transitorio de Supabase por cold-start hacía perder el pedido en
+  silencio (quedaba solo en Sheets). Tres capas lo blindan:
+  1. `orders_store.save_order` **reintenta** el insert (backoff); `supabase.insert` devuelve
+     `bool` para saber si Supabase aceptó.
+  2. **Reconciliación** `reconcile_from_sheets` (job del scheduler cada 10 min, `main.py`):
+     reintegra a Supabase cualquier pedido que quedó solo en Sheets. **Idempotente** por la
+     columna `origen_key` (`plataforma:sender_id:fecha`, compartida entre ambos writes — por
+     eso `register_order` y `save_order` reciben la MISMA `fecha` desde `orchestrator.py`). Las
+     filas viejas sin `origen_key` (previas a este cambio) se **adoptan** por contenido, sin
+     duplicar (rama auto-dormante tras la 1ª corrida).
+  3. Si aun así falla, queda un log `ERROR` con la fila (ya no en silencio).
+
+  Requiere en la Supabase de Cava (correr una vez): `alter table pedidos add column if not
+  exists origen_key text; create unique index if not exists pedidos_origen_key_uidx on
+  pedidos(origen_key);`
+
+  Todo esto (`reconcile_from_sheets`, el job, `origen_key`, la adopción) es **puente de
+  migración**: se retira junto con la hoja `pedidos` de Sheets. Pendiente al tocar esta capa:
+  unificar la señal de error de `supabase.py` (`insert` devuelve bool; `upsert/update/delete`
+  no) y decidir si el reintento transitorio baja a `supabase.insert` para todos los callers.
 - **Keep-alive:** free tier duerme el servicio a los ~15 min. Un pinger externo gratuito
   (cron-job.org / UptimeRobot) a `GET /healthz` cada ~10 min lo mantiene despierto. Render Cron
   Jobs es de pago; por eso el pinger externo.

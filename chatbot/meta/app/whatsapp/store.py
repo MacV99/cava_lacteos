@@ -106,6 +106,10 @@ async def _write_conv(c: dict) -> None:
 async def _write_msg(c: dict, m: dict) -> None:
     if sb.enabled:
         # La FK exige que la conversación exista → upsert conv, luego insert msg.
+        # (A diferencia de los pedidos, aquí NO reintentamos: un mensaje suelto
+        # perdido por un blip es tolerable; un pedido no — ese sí se reintegra vía
+        # reconcile_from_sheets. Si en el futuro se quiere reintento transversal,
+        # va en supabase.insert, no aquí.)
         await sb.upsert("conversations", _conv_to_row(c), on_conflict="wa_id")
         await sb.insert("messages", _msg_to_row(c["waId"], m))
     else:

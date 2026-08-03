@@ -50,10 +50,13 @@ async def upsert(table: str, row: dict, on_conflict: str) -> None:
         logger.error("[supabase] upsert %s: %s %s", table, r.status_code, r.text)
 
 
-async def insert(table: str, row: dict) -> None:
+async def insert(table: str, row: dict) -> bool:
+    """Inserta una fila. Devuelve True si Supabase la aceptó (2xx), False si no."""
     r = await _http.post(f"{_base}/{table}", headers=_headers({"Prefer": "return=minimal"}), json=row)
     if r.status_code >= 300:
         logger.error("[supabase] insert %s: %s %s", table, r.status_code, r.text)
+        return False
+    return True
 
 
 async def update(table: str, patch: dict, filters: dict) -> None:

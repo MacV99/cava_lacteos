@@ -10,13 +10,28 @@ Tabla (crear en la Supabase de Cava, SQL en el README/instrucciones):
           telefono, direccion, pago, pedido, total numeric, plataforma,
           estado text default 'nuevo')  -- estado ∈ {nuevo, despachado, cancelado}
 """
+import asyncio
 import logging
 
+from app.sheets import orders as sheets_orders
 from app.whatsapp import supabase as sb
 
 logger = logging.getLogger(__name__)
 
 ESTADOS = {"nuevo", "despachado", "cancelado"}
+
+# El free tier (Render/Supabase) puede dar timeouts transitorios por cold-start.
+# Un pedido perdido diverge el panel de Sheets, así que reintentamos con backoff.
+_SAVE_RETRIES = 3
+
+
+def origen_key(plataforma: str, sender_id: str, fecha: str) -> str:
+    """Llave natural de un pedido (idempotencia entre Sheets y Supabase).
+
+    fecha (timestamp de Bogotá) + sender_id es único por pedido: un mismo cliente no
+    concreta dos ventas en el mismo segundo. La comparten el write vivo y la reconciliación.
+    """
+    return f"{(plataforma or 'messenger').strip()}:{sender_id.strip()}:{fecha.strip()}"
 
 
 async def save_order(
@@ -28,15 +43,97 @@ async def save_order(
     pedido: str,
     total: str,
     plataforma: str = "messenger",
-) -> None:
-    """Inserta un pedido en Supabase (best-effort). Sin Supabase, no-op."""
+    key: str | None = None,
+) -> bool:
+    """Inserta un pedido en Supabase (best-effort, con reintentos). Sin Supabase, no-op.
+
+    `key` es el origen_key (ver origen_key()); permite que la reconciliación no duplique
+    este pedido después. Devuelve True si se guardó, False si se agotaron los reintentos.
+    """
     if not sb.enabled:
-        return
-    await sb.insert("pedidos", {
+        return False
+    row = {
         "sender_id": sender_id, "nombre": nombre, "telefono": telefono,
         "direccion": direccion, "pago": pago, "pedido": pedido,
         "total": total, "plataforma": plataforma,
+    }
+    if key:
+        row["origen_key"] = key
+    for attempt in range(1, _SAVE_RETRIES + 1):
+        try:
+            if await sb.insert("pedidos", row):
+                return True
+        except Exception as exc:  # httpx timeout/conexión (cold-start, etc.)
+            logger.warning("save_order intento %d/%d falló: %s", attempt, _SAVE_RETRIES, exc)
+        if attempt < _SAVE_RETRIES:
+            await asyncio.sleep(0.6 * attempt)
+    logger.error("save_order: pedido NO guardado en Supabase tras %d intentos: %s", _SAVE_RETRIES, row)
+    return False
+
+
+def _tuple(sender_id, telefono, pedido, total) -> tuple:
+    """Firma de contenido para adoptar filas viejas (pre-origen_key) sin duplicarlas.
+
+    No incluye plataforma: el sender_id (PSID) ya es único por plataforma, y así se
+    evita un falso duplicado si el valor de plataforma difiere entre Sheets y Supabase.
+    """
+    dig = "".join(ch for ch in str(total) if ch.isdigit())
+    return (str(sender_id).strip(), str(telefono).strip(), str(pedido).strip(), dig)
+
+
+async def reconcile_from_sheets() -> int:
+    """Red de seguridad: reintegra a Supabase cualquier pedido que quedó solo en Sheets.
+
+    Idempotente por origen_key. Corre en un job del scheduler. Devuelve cuántos pedidos
+    backfilleó (insertó o adoptó).
+
+    ⚠️ PUENTE DE MIGRACIÓN — BORRAR junto con la hoja `pedidos` de Sheets (ver CLAUDE.md,
+    Fase 2). Sin Sheets, esta red de seguridad ya no aplica.
+    """
+    if not sb.enabled:
+        return 0
+    sheet_rows = await asyncio.to_thread(sheets_orders.read_all)
+    if not sheet_rows:
+        return 0
+    existing = await sb.select("pedidos", {
+        "select": "id,sender_id,telefono,pedido,total,plataforma,origen_key", "limit": "10000",
     })
+    have_keys = {r["origen_key"] for r in existing if r.get("origen_key")}
+    # Pool de filas viejas (sin key) agrupadas por contenido → para adoptar sin duplicar.
+    # Solo-migración: el write vivo ya setea origen_key, así que estas filas solo existen
+    # de ANTES de este deploy. Tras la 1ª reconciliación queda vacío y la rama de adopción
+    # no vuelve a dispararse (auto-dormante).
+    legacy: dict[tuple, list] = {}
+    for r in existing:
+        if not r.get("origen_key"):
+            legacy.setdefault(_tuple(r.get("sender_id"), r.get("telefono"), r.get("pedido"),
+                                     r.get("total")), []).append(r["id"])
+
+    backfilled = 0
+    for row in sheet_rows:
+        key = origen_key(row["plataforma"], row["sender_id"], row["fecha"])
+        if key in have_keys:
+            continue
+        sig = _tuple(row["sender_id"], row["telefono"], row["pedido"], row["total"])
+        if legacy.get(sig):
+            adopt_id = legacy[sig].pop()  # adopta una fila vieja equivalente
+            try:
+                await sb.update("pedidos", {"origen_key": key}, {"id": adopt_id})
+                have_keys.add(key)
+                backfilled += 1
+            except Exception as exc:
+                logger.warning("reconcile: no se pudo adoptar id=%s: %s", adopt_id, exc)
+            continue
+        ok = await save_order(
+            row["sender_id"], row["nombre"], row["telefono"], row["direccion"],
+            row["pago"], row["pedido"], row["total"], row["plataforma"], key=key,
+        )
+        if ok:
+            have_keys.add(key)
+            backfilled += 1
+    if backfilled:
+        logger.info("reconcile: %d pedido(s) reintegrados desde Sheets a Supabase", backfilled)
+    return backfilled
 
 
 def _to_client(r: dict) -> dict:

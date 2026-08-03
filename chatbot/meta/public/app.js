@@ -669,7 +669,7 @@ function wireDropdown() {
 
 // ── Pedidos (Supabase, migración gradual desde Sheets) ─────────────────────
 let orders = [];
-let ordersFilter = 'todos';
+let ordersFilter = 'nuevo';
 let ordersLoaded = false;
 
 function fmtMoney(v) {
