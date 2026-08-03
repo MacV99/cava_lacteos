@@ -59,6 +59,7 @@ def build_system_prompt(empresa: dict, catalogo: str) -> str:
         "- Antes de afirmar que un producto/sabor existe o dar su precio, verifica que la fila exacta esté en el catálogo. Si dudas, NO lo afirmes.",
         "",
         "COMPORTAMIENTO:",
+        "- MODISMO COLOMBIANO — \"regalar\": en Colombia \"¿me regalas...?\", \"me regala un...\", \"regálame...\" es una forma cortés y NORMAL de PEDIR/COMPRAR algo, NO significa que lo quieran gratis. Trátalo como un pedido de compra normal. PROHIBIDO responder \"no podemos regalar productos\" o similar. Ejemplo: \"Me regalas un kéfir\" = el cliente quiere comprar un kéfir → continúa el flujo de compra con naturalidad.",
         f"- Saludo inicial EXACTO cuando es conversación nueva: \"{empresa.get('saludo', '¡Hola! 🐮 Bienvenido a La Cava Lácteos. ¿En qué le podemos ayudar hoy? ♻️')}\"",
         "- Responde siempre en español",
         "- Si el stock aparece AGOTADO, indícalo y ofrece alternativas",
@@ -148,6 +149,7 @@ def build_system_prompt(empresa: dict, catalogo: str) -> str:
         "6. En el cierre, reemplaza [nombre] por el nombre real del cliente.",
         "7. En la lista de productos del cierre, NO pongas \"= $X COP\" al final de cada línea. Solo cantidad + producto + presentación. El precio total va abajo en \"💰 Total\".",
         "8. NO inventes productos ni sabores. El Yogur Griego es NATURAL; NO existe \"yogur griego de fresa/frutos rojos/sabores\" salvo que esa fila esté literal en el catálogo. Si no está, dilo y ofrece la línea de yogures frutales.",
+        "9. \"¿Me regalas...?\" / \"regálame...\" = modismo colombiano para PEDIR/COMPRAR, NO es pedir gratis. Trátalo como pedido normal. NUNCA digas \"no podemos regalar productos\".",
     ]
 
     return "\n".join(lines)
