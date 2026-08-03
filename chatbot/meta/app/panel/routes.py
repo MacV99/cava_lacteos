@@ -86,6 +86,29 @@ async def api_orders_estado(request: Request):
     return {"ok": True, "estado": estado}
 
 
+@router.post("/api/orders/editar")
+async def api_orders_editar(request: Request):
+    body = await request.json() or {}
+    order_id = body.get("id")
+    patch = {k: body.get(k) for k in orders_store.CAMPOS_EDITABLES if k in body}
+    if order_id is None or not patch:
+        return JSONResponse({"error": "faltan id y campos a editar"}, status_code=400)
+    if not await orders_store.update_order(order_id, patch):
+        return JSONResponse({"error": "no se pudo editar (Supabase no configurado o falló)"}, status_code=400)
+    return {"ok": True}
+
+
+@router.post("/api/orders/eliminar")
+async def api_orders_eliminar(request: Request):
+    body = await request.json() or {}
+    order_id = body.get("id")
+    if order_id is None:
+        return JSONResponse({"error": "falta id"}, status_code=400)
+    if not await orders_store.delete_order(order_id):
+        return JSONResponse({"error": "no se pudo eliminar (Supabase no configurado o falló)"}, status_code=400)
+    return {"ok": True}
+
+
 # ── Envío ────────────────────────────────────────────────────────────────────
 @router.post("/api/send")
 async def api_send(request: Request):

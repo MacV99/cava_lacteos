@@ -8,7 +8,7 @@ que es lo que lee el panel. Cuando Sheets se retire, esta será la única fuente
 Tabla (crear en la Supabase de Cava, SQL en el README/instrucciones):
   pedidos(id bigserial pk, created_at timestamptz default now(), sender_id, nombre,
           telefono, direccion, pago, pedido, total numeric, plataforma,
-          estado text default 'nuevo')  -- estado ∈ {nuevo, despachado, cancelado}
+          estado text default 'pendiente')  -- estado ∈ {pendiente, despachado}
 """
 import asyncio
 import logging
@@ -18,7 +18,10 @@ from app.whatsapp import supabase as sb
 
 logger = logging.getLogger(__name__)
 
-ESTADOS = {"nuevo", "despachado", "cancelado"}
+ESTADOS = {"pendiente", "despachado"}
+
+# Campos que el panel puede editar de un pedido (los demás son inmutables).
+CAMPOS_EDITABLES = {"nombre", "telefono", "direccion", "pago", "pedido", "total"}
 
 # El free tier (Render/Supabase) puede dar timeouts transitorios por cold-start.
 # Un pedido perdido diverge el panel de Sheets, así que reintentamos con backoff.
@@ -55,7 +58,7 @@ async def save_order(
     row = {
         "sender_id": sender_id, "nombre": nombre, "telefono": telefono,
         "direccion": direccion, "pago": pago, "pedido": pedido,
-        "total": total, "plataforma": plataforma,
+        "total": total, "plataforma": plataforma, "estado": "pendiente",
     }
     if key:
         row["origen_key"] = key
@@ -136,13 +139,18 @@ async def reconcile_from_sheets() -> int:
     return backfilled
 
 
+def _norm_estado(v) -> str:
+    """Solo 2 estados. Filas viejas ('nuevo', 'cancelado') se pliegan a 'pendiente'."""
+    return "despachado" if str(v or "").strip().lower() == "despachado" else "pendiente"
+
+
 def _to_client(r: dict) -> dict:
     return {
         "id": r.get("id"), "createdAt": r.get("created_at"),
         "senderId": r.get("sender_id"), "nombre": r.get("nombre"),
         "telefono": r.get("telefono"), "direccion": r.get("direccion"),
         "pago": r.get("pago"), "pedido": r.get("pedido"), "total": r.get("total"),
-        "plataforma": r.get("plataforma"), "estado": r.get("estado") or "nuevo",
+        "plataforma": r.get("plataforma"), "estado": _norm_estado(r.get("estado")),
     }
 
 
@@ -155,8 +163,25 @@ async def list_orders(limit: int = 300) -> list[dict]:
 
 
 async def set_estado(order_id, estado: str) -> bool:
-    """Cambia el estado de un pedido (nuevo/despachado/cancelado)."""
+    """Cambia el estado de un pedido (pendiente/despachado)."""
     if not sb.enabled or estado not in ESTADOS:
         return False
-    await sb.update("pedidos", {"estado": estado}, {"id": order_id})
-    return True
+    return await sb.update("pedidos", {"estado": estado}, {"id": order_id})
+
+
+async def update_order(order_id, patch: dict) -> bool:
+    """Edita campos de un pedido (nombre/telefono/direccion/pago/pedido/total).
+
+    Filtra a CAMPOS_EDITABLES para no dejar tocar id/estado/plataforma/origen_key.
+    """
+    clean = {k: v for k, v in (patch or {}).items() if k in CAMPOS_EDITABLES}
+    if not sb.enabled or not clean:
+        return False
+    return await sb.update("pedidos", clean, {"id": order_id})
+
+
+async def delete_order(order_id) -> bool:
+    """Borra un pedido de Supabase. Sin Supabase, no-op."""
+    if not sb.enabled:
+        return False
+    return await sb.delete("pedidos", {"id": order_id})

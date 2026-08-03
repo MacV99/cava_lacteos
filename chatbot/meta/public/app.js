@@ -17,6 +17,12 @@ const CH_META = {
   instagram: { name: 'Instagram', color: '#c13584' },
 };
 
+// Alcance del plan: solo WhatsApp está contratado y activo. Messenger e Instagram
+// quedan visibles en la UI (en gris, "Próximamente") como mejora futura, pero SIN
+// traer datos ni procesarse en el panel. Poner true para reactivar tras cotizar.
+const CHANNELS_ENABLED = { whatsapp: true, messenger: false, instagram: false };
+const META_ENABLED = CHANNELS_ENABLED.messenger || CHANNELS_ENABLED.instagram;
+
 const $ = (id) => document.getElementById(id);
 
 // ── SVG de canal ─────────────────────────────────────────────────────────────
@@ -132,6 +138,7 @@ async function gasPost(payload) {
   return json;
 }
 async function pollMeta() {
+  if (!META_ENABLED) { metaConvs = []; metaOk = true; return; }  // fuera de alcance: Messenger/IG deshabilitados
   try {
     const chats = await jsonp(GAS_URL);
     metaConvs = (Array.isArray(chats) ? chats : [])
@@ -200,6 +207,9 @@ function channelStates() {
     }
   }
   const mkMeta = (key) => {
+    if (!CHANNELS_ENABLED[key]) {
+      return { key, st: 'off', detail: 'No incluido en el plan actual · disponible como mejora futura.' };
+    }
     const n = metaConvs.filter((c) => c.channel === key).length;
     return metaOk
       ? { key, st: 'ok', detail: `Datos llegando · ${n} chat${n === 1 ? '' : 's'}` }
@@ -211,14 +221,15 @@ function channelStates() {
 function statusRowsHTML(states) {
   return states.map((s) => {
     const meta = CH_META[s.key];
-    const dotCls = s.st === 'ok' ? 'ok' : (s.st === 'err' ? 'err' : 'warn');
-    return `<div class="status-row">
+    const dotCls = s.st === 'ok' ? 'ok' : s.st === 'err' ? 'err' : s.st === 'off' ? 'off' : 'warn';
+    const title = s.st === 'ok' ? 'OK' : s.st === 'err' ? 'Con falla' : s.st === 'off' ? 'No incluido' : 'Atención';
+    return `<div class="status-row${s.st === 'off' ? ' status-row--off' : ''}">
       <span class="status-row__icon" style="color:${meta.color}">${canalIcon(s.key)}</span>
       <div class="status-row__body">
-        <div class="status-row__name">${meta.name}</div>
+        <div class="status-row__name">${meta.name}${s.st === 'off' ? '<span class="soon-tag">Próximamente</span>' : ''}</div>
         <div class="status-row__detail">${esc(s.detail)}</div>
       </div>
-      <span class="status-row__dot status-row__dot--${dotCls}" title="${s.st === 'ok' ? 'OK' : s.st === 'err' ? 'Con falla' : 'Atención'}"></span>
+      <span class="status-row__dot status-row__dot--${dotCls}" title="${title}"></span>
     </div>`;
   }).join('');
 }
@@ -657,6 +668,7 @@ function wireDropdown() {
   btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.contains('hidden') ? open() : close(); });
   menu.querySelectorAll('.dropdown__opt').forEach((opt) => {
     opt.addEventListener('click', () => {
+      if (opt.classList.contains('is-disabled')) return;  // canal fuera de alcance
       channelFilter = opt.dataset.value;
       $('canal-label').textContent = opt.textContent.trim();
       menu.querySelectorAll('.dropdown__opt').forEach((o) => o.classList.toggle('is-selected', o === opt));
@@ -669,7 +681,7 @@ function wireDropdown() {
 
 // ── Pedidos (Supabase, migración gradual desde Sheets) ─────────────────────
 let orders = [];
-let ordersFilter = 'nuevo';
+let ordersFilter = 'pendiente';
 let ordersLoaded = false;
 
 function fmtMoney(v) {
@@ -684,7 +696,7 @@ function fmtOrderDate(iso) {
   return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ', ' +
          d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 }
-const ESTADO_LABEL = { nuevo: 'Nuevo', despachado: 'Despachado', cancelado: 'Cancelado' };
+const ESTADO_LABEL = { pendiente: 'Pendiente', despachado: 'Despachado' };
 function orderChannel(p) {
   const r = String(p || '').toLowerCase();
   return r === 'instagram' ? 'instagram' : (r === 'messenger' || r === 'page') ? 'messenger' : 'whatsapp';
@@ -704,7 +716,7 @@ async function pollOrders() {
 }
 
 function renderOrdersBadge() {
-  const n = orders.filter((o) => o.estado === 'nuevo').length;
+  const n = orders.filter((o) => o.estado === 'pendiente').length;
   const b = $('nav-orders-badge');
   b.textContent = n > 99 ? '99+' : String(n);
   b.classList.toggle('hidden', n === 0);
@@ -736,6 +748,7 @@ function renderOrders() {
   empty.classList.add('hidden');
   box.innerHTML = rows.map(orderCardHTML).join('');
   box.querySelectorAll('.oaction').forEach((el) => el.addEventListener('click', () => setOrderEstado(el.dataset.id, el.dataset.estado)));
+  box.querySelectorAll('.oedit').forEach((el) => el.addEventListener('click', () => openOrderModal(el.dataset.id)));
 }
 
 function orderCardHTML(o) {
@@ -745,10 +758,10 @@ function orderCardHTML(o) {
   const telHtml = tel ? row('📞', `<a href="tel:${esc(tel)}">${esc(o.telefono)}</a>`) : '';
   const dirHtml = o.direccion ? row('📍', esc(o.direccion)) : '';
   const pagoHtml = o.pago ? row('💳', esc(o.pago)) : '';
-  const acciones = o.estado === 'nuevo'
-    ? `<button class="oaction oaction--ok" data-id="${esc(o.id)}" data-estado="despachado">✓ Despachar</button>
-       <button class="oaction oaction--danger" data-id="${esc(o.id)}" data-estado="cancelado">Cancelar</button>`
-    : `<button class="oaction" data-id="${esc(o.id)}" data-estado="nuevo">↩ Reabrir</button>`;
+  const toggle = o.estado === 'pendiente'
+    ? `<button class="oaction oaction--ok" data-id="${esc(o.id)}" data-estado="despachado">✓ Despachar</button>`
+    : `<button class="oaction" data-id="${esc(o.id)}" data-estado="pendiente">↩ Reabrir</button>`;
+  const acciones = `<button class="oedit" data-id="${esc(o.id)}" title="Editar" aria-label="Editar">✎</button>${toggle}`;
   return `<div class="order-card order-card--${o.estado}">
     <div class="order-card__head">
       <span class="canal-badge canal-badge--${ch}" aria-hidden="true">${canalIcon(ch)}</span>
@@ -774,10 +787,63 @@ async function setOrderEstado(id, estado) {
   try {
     const r = await fetch('/api/orders/estado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, estado }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    notify(estado === 'despachado' ? 'Pedido despachado' : estado === 'cancelado' ? 'Pedido cancelado' : 'Pedido reabierto');
+    notify(estado === 'despachado' ? 'Pedido despachado' : 'Pedido reabierto');
   } catch {
     o.estado = prev; renderOrders(); renderOrdersBadge(); notify('No se pudo actualizar el pedido', 'err');
   }
+}
+
+// ── Editar / eliminar pedido (modal) ───────────────────────────────────────
+let editingOrderId = null;
+function openOrderModal(id) {
+  const o = orders.find((x) => String(x.id) === String(id)); if (!o) return;
+  editingOrderId = o.id;
+  $('order-edit-id').value = o.id;
+  $('order-edit-nombre').value = o.nombre || '';
+  $('order-edit-telefono').value = o.telefono || '';
+  $('order-edit-direccion').value = o.direccion || '';
+  $('order-edit-pago').value = o.pago || '';
+  $('order-edit-pedido').value = o.pedido || '';
+  $('order-edit-total').value = o.total ?? '';
+  $('order-modal').classList.remove('hidden');
+}
+function closeOrderModal() { $('order-modal').classList.add('hidden'); editingOrderId = null; }
+
+async function saveOrderEdit(e) {
+  e.preventDefault();
+  const id = editingOrderId; if (id == null) return;
+  const patch = {
+    nombre: $('order-edit-nombre').value.trim(),
+    telefono: $('order-edit-telefono').value.trim(),
+    direccion: $('order-edit-direccion').value.trim(),
+    pago: $('order-edit-pago').value.trim(),
+    pedido: $('order-edit-pedido').value.trim(),
+    total: $('order-edit-total').value.trim(),
+  };
+  const btn = $('order-edit-save'); btn.disabled = true;
+  try {
+    const r = await fetch('/api/orders/editar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const o = orders.find((x) => String(x.id) === String(id));
+    if (o) Object.assign(o, patch);
+    closeOrderModal(); renderOrders(); notify('Pedido actualizado');
+  } catch {
+    notify('No se pudo guardar el pedido', 'err');
+  } finally { btn.disabled = false; }
+}
+
+async function deleteOrderEdit() {
+  const id = editingOrderId; if (id == null) return;
+  if (!confirm('¿Eliminar este pedido? No se puede deshacer.')) return;
+  const btn = $('order-edit-delete'); btn.disabled = true;
+  try {
+    const r = await fetch('/api/orders/eliminar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    orders = orders.filter((x) => String(x.id) !== String(id));
+    closeOrderModal(); renderOrders(); renderOrdersBadge(); notify('Pedido eliminado');
+  } catch {
+    notify('No se pudo eliminar el pedido', 'err');
+  } finally { btn.disabled = false; }
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────
@@ -813,7 +879,7 @@ function startPanel() {
   if (!intervalsSet) {
     intervalsSet = true;
     setInterval(pollWA, POLL_WA_MS);
-    setInterval(pollMeta, POLL_META_MS);
+    if (META_ENABLED) setInterval(pollMeta, POLL_META_MS);
     setInterval(pollHealth, POLL_HEALTH_MS);
     setInterval(pollOrders, POLL_ORDERS_MS);
   }
@@ -842,6 +908,9 @@ function wire() {
     renderOrders();
   }));
   $('status-modal').querySelectorAll('[data-close-status]').forEach((el) => el.addEventListener('click', closeStatus));
+  $('order-modal').querySelectorAll('[data-close-order]').forEach((el) => el.addEventListener('click', closeOrderModal));
+  $('order-form').addEventListener('submit', saveOrderEdit);
+  $('order-edit-delete').addEventListener('click', deleteOrderEdit);
   $('search').addEventListener('input', (e) => { searchTerm = e.target.value; listSig = ''; renderList(); });
   wireDropdown();
   $('chat-nombre').addEventListener('click', renameContact);

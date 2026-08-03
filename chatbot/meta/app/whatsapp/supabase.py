@@ -59,15 +59,21 @@ async def insert(table: str, row: dict) -> bool:
     return True
 
 
-async def update(table: str, patch: dict, filters: dict) -> None:
+async def update(table: str, patch: dict, filters: dict) -> bool:
+    """Aplica un patch. Devuelve True si Supabase lo aceptó (2xx), False si no."""
     r = await _http.patch(f"{_base}/{table}", headers=_headers({"Prefer": "return=minimal"}),
                           params={k: f"eq.{v}" for k, v in filters.items()}, json=patch)
     if r.status_code >= 300:
         logger.error("[supabase] update %s: %s %s", table, r.status_code, r.text)
+        return False
+    return True
 
 
-async def delete(table: str, filters: dict) -> None:
+async def delete(table: str, filters: dict) -> bool:
+    """Borra filas. Devuelve True si Supabase lo aceptó (2xx), False si no."""
     r = await _http.request("DELETE", f"{_base}/{table}", headers=_headers({"Prefer": "return=minimal"}),
                             params={k: f"eq.{v}" for k, v in filters.items()})
     if r.status_code >= 300:
         logger.error("[supabase] delete %s: %s %s", table, r.status_code, r.text)
+        return False
+    return True

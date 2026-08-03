@@ -74,8 +74,8 @@
         <ul class="dropdown__menu hidden" id="canal-menu" role="listbox" aria-label="Filtrar por canal">
           <li role="option" data-value="todos" class="dropdown__opt is-selected">Todos los canales</li>
           <li role="option" data-value="whatsapp" class="dropdown__opt"><span class="dot dot--whatsapp"></span>WhatsApp</li>
-          <li role="option" data-value="messenger" class="dropdown__opt"><span class="dot dot--messenger"></span>Messenger</li>
-          <li role="option" data-value="instagram" class="dropdown__opt"><span class="dot dot--instagram"></span>Instagram</li>
+          <li role="option" data-value="messenger" class="dropdown__opt is-disabled" aria-disabled="true"><span class="dot dot--messenger"></span>Messenger<span class="soon-tag">Próximamente</span></li>
+          <li role="option" data-value="instagram" class="dropdown__opt is-disabled" aria-disabled="true"><span class="dot dot--instagram"></span>Instagram<span class="soon-tag">Próximamente</span></li>
         </ul>
       </div>
     </div>
@@ -178,9 +178,8 @@
 
     <div class="ofilterbar" id="orders-filters">
       <button type="button" class="ofilter" data-estado="todos">Todos</button>
-      <button type="button" class="ofilter is-active" data-estado="nuevo">Nuevos</button>
+      <button type="button" class="ofilter is-active" data-estado="pendiente">Pendientes</button>
       <button type="button" class="ofilter" data-estado="despachado">Despachados</button>
-      <button type="button" class="ofilter" data-estado="cancelado">Cancelados</button>
     </div>
 
     <div id="orders-list" class="orders-list"></div>
@@ -234,7 +233,31 @@
         <button class="icon-btn" data-close-status aria-label="Cerrar">✕</button>
       </header>
       <div id="status-list" class="status-list"></div>
-      <p class="status-note">WhatsApp se comprueba en vivo contra la API de Meta. Messenger e Instagram reflejan el flujo de datos (Google Sheet), no el token de Meta directamente.</p>
+      <p class="status-note">WhatsApp se comprueba en vivo contra la API de Meta. Messenger e Instagram están disponibles como mejora futura y no forman parte del plan actual.</p>
+    </div>
+  </div>
+
+  <!-- ── Modal de edición de pedido ─────────────────────────────────── -->
+  <div id="order-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Editar pedido">
+    <div class="modal__backdrop" data-close-order></div>
+    <div class="modal__card">
+      <header class="modal__head">
+        <h2>Editar pedido</h2>
+        <button class="icon-btn" data-close-order aria-label="Cerrar">✕</button>
+      </header>
+      <form id="order-form" class="order-form">
+        <input type="hidden" id="order-edit-id">
+        <label class="ofield"><span>Nombre</span><input id="order-edit-nombre" type="text" autocomplete="off"></label>
+        <label class="ofield"><span>Teléfono</span><input id="order-edit-telefono" type="text" inputmode="tel" autocomplete="off"></label>
+        <label class="ofield"><span>Dirección</span><input id="order-edit-direccion" type="text" autocomplete="off"></label>
+        <label class="ofield"><span>Pago</span><input id="order-edit-pago" type="text" autocomplete="off"></label>
+        <label class="ofield"><span>Pedido</span><textarea id="order-edit-pedido" rows="3"></textarea></label>
+        <label class="ofield"><span>Total</span><input id="order-edit-total" type="text" inputmode="numeric" autocomplete="off"></label>
+        <div class="order-form__foot">
+          <button type="button" class="oaction oaction--danger" id="order-edit-delete">🗑 Eliminar</button>
+          <button type="submit" class="oaction oaction--ok" id="order-edit-save">Guardar</button>
+        </div>
+      </form>
     </div>
   </div>
 
