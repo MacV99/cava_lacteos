@@ -2,8 +2,8 @@
   "name": "Cava — Panel",
   "short_name": "Cava",
   "description": "Panel de chats y pedidos de Cava Lácteos (WhatsApp, Messenger, Instagram).",
-  "theme_color": "#fafafa",
-  "background_color": "#fafafa",
+  "theme_color": "#f7e3c6",
+  "background_color": "#f7e3c6",
   "display": "standalone",
   "start_url": "/",
   "scope": "/",
@@ -17,6 +17,18 @@
     },
     {
       "src": "/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/img/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
