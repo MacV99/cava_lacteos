@@ -1,20 +1,18 @@
-"""Pedidos del panel — persistencia en Supabase (migración gradual desde Sheets).
+"""Pedidos del panel — persistencia SOLO en Supabase (tabla `pedidos`).
 
-Primer paso de la migración Sheets → Supabase: los pedidos que la IA concreta se
-muestran en el panel. El bot SIGUE escribiendo en la hoja `pedidos`
-(`app/sheets/orders.py`); además hace write-through a la tabla `pedidos` de Supabase,
-que es lo que lee el panel. Cuando Sheets se retire, esta será la única fuente.
+La IA concreta una venta → se escribe la tabla `pedidos` de Supabase, que es lo que
+lee y edita el panel. Ya NO se escribe la hoja de Sheets (puente de migración retirado):
+Supabase es la única fuente de verdad de los pedidos.
 
-Tabla (crear en la Supabase de Cava, SQL en el README/instrucciones):
+Tabla (en la Supabase de Cava):
   pedidos(id bigserial pk, created_at timestamptz default now(), sender_id, nombre,
           telefono, direccion, pago, pedido, total numeric, plataforma,
-          estado text default 'pendiente')  -- estado ∈ {pendiente, despachado}
+          estado text default 'pendiente', origen_key text)  -- estado ∈ {pendiente, despachado}
 """
 import asyncio
 import logging
 import uuid
 
-from app.sheets import orders as sheets_orders
 from app.whatsapp import supabase as sb
 
 logger = logging.getLogger(__name__)
@@ -25,7 +23,7 @@ ESTADOS = {"pendiente", "despachado"}
 CAMPOS_EDITABLES = {"nombre", "telefono", "direccion", "pago", "pedido", "total"}
 
 # El free tier (Render/Supabase) puede dar timeouts transitorios por cold-start.
-# Un pedido perdido diverge el panel de Sheets, así que reintentamos con backoff.
+# Un insert perdido = pedido perdido, así que reintentamos con backoff.
 _SAVE_RETRIES = 3
 
 
@@ -112,71 +110,6 @@ async def create_order(data: dict) -> bool:
     except Exception as exc:
         logger.error("create_order: no se pudo crear pedido manual: %s", exc)
         return False
-
-
-def _tuple(sender_id, telefono, pedido, total) -> tuple:
-    """Firma de contenido para adoptar filas viejas (pre-origen_key) sin duplicarlas.
-
-    No incluye plataforma: el sender_id (PSID) ya es único por plataforma, y así se
-    evita un falso duplicado si el valor de plataforma difiere entre Sheets y Supabase.
-    """
-    dig = "".join(ch for ch in str(total) if ch.isdigit())
-    return (str(sender_id).strip(), str(telefono).strip(), str(pedido).strip(), dig)
-
-
-async def reconcile_from_sheets() -> int:
-    """Red de seguridad: reintegra a Supabase cualquier pedido que quedó solo en Sheets.
-
-    Idempotente por origen_key. Corre en un job del scheduler. Devuelve cuántos pedidos
-    backfilleó (insertó o adoptó).
-
-    ⚠️ PUENTE DE MIGRACIÓN — BORRAR junto con la hoja `pedidos` de Sheets (ver CLAUDE.md,
-    Fase 2). Sin Sheets, esta red de seguridad ya no aplica.
-    """
-    if not sb.enabled:
-        return 0
-    sheet_rows = await asyncio.to_thread(sheets_orders.read_all)
-    if not sheet_rows:
-        return 0
-    existing = await sb.select("pedidos", {
-        "select": "id,sender_id,telefono,pedido,total,plataforma,origen_key", "limit": "10000",
-    })
-    have_keys = {r["origen_key"] for r in existing if r.get("origen_key")}
-    # Pool de filas viejas (sin key) agrupadas por contenido → para adoptar sin duplicar.
-    # Solo-migración: el write vivo ya setea origen_key, así que estas filas solo existen
-    # de ANTES de este deploy. Tras la 1ª reconciliación queda vacío y la rama de adopción
-    # no vuelve a dispararse (auto-dormante).
-    legacy: dict[tuple, list] = {}
-    for r in existing:
-        if not r.get("origen_key"):
-            legacy.setdefault(_tuple(r.get("sender_id"), r.get("telefono"), r.get("pedido"),
-                                     r.get("total")), []).append(r["id"])
-
-    backfilled = 0
-    for row in sheet_rows:
-        key = origen_key(row["plataforma"], row["sender_id"], row["fecha"])
-        if key in have_keys:
-            continue
-        sig = _tuple(row["sender_id"], row["telefono"], row["pedido"], row["total"])
-        if legacy.get(sig):
-            adopt_id = legacy[sig].pop()  # adopta una fila vieja equivalente
-            try:
-                await sb.update("pedidos", {"origen_key": key}, {"id": adopt_id})
-                have_keys.add(key)
-                backfilled += 1
-            except Exception as exc:
-                logger.warning("reconcile: no se pudo adoptar id=%s: %s", adopt_id, exc)
-            continue
-        ok = await save_order(
-            row["sender_id"], row["nombre"], row["telefono"], row["direccion"],
-            row["pago"], row["pedido"], row["total"], row["plataforma"], key=key,
-        )
-        if ok:
-            have_keys.add(key)
-            backfilled += 1
-    if backfilled:
-        logger.info("reconcile: %d pedido(s) reintegrados desde Sheets a Supabase", backfilled)
-    return backfilled
 
 
 def _norm_estado(v) -> str:

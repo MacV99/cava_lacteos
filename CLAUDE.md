@@ -48,34 +48,25 @@ WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Inst
 - **Persistencia del panel:** conversaciones en **Supabase** (`app/whatsapp/store.py`, vía
   PostgREST con httpx; sin `SUPABASE_URL` cae a JSON local). El cerebro sigue guardando su estado
   de WhatsApp en Sheets (`actividad`, `canal='whatsapp'`) — dos almacenes distintos por ahora.
-- **Pedidos en el panel (migración Sheets→Supabase, Fase 2):** cuando la IA concreta una
-  venta el bot hace **dual-write** — sigue escribiendo la hoja `pedidos` (`app/sheets/orders.py`)
-  Y hace write-through a la tabla `pedidos` de Supabase (`app/whatsapp/orders_store.py`, llamado
-  desde `orchestrator.py` tras `register_order`). El panel tiene pantalla **Pedidos** (botón 📦
-  con badge de nuevos): `GET /api/orders` lista y `POST /api/orders/estado` marca
-  despachado/cancelado/nuevo. La tabla `pedidos` ya existe en la Supabase de Cava. Cuando el
-  dual-write esté probado en prod, se retira la hoja de Sheets.
-- **Confiabilidad del write-through (que ningún pedido se pierda):** el free tier duerme el
-  servicio, y un timeout transitorio de Supabase por cold-start hacía perder el pedido en
-  silencio (quedaba solo en Sheets). Tres capas lo blindan:
-  1. `orders_store.save_order` **reintenta** el insert (backoff); `supabase.insert` devuelve
-     `bool` para saber si Supabase aceptó.
-  2. **Reconciliación** `reconcile_from_sheets` (job del scheduler cada 10 min, `main.py`):
-     reintegra a Supabase cualquier pedido que quedó solo en Sheets. **Idempotente** por la
-     columna `origen_key` (`plataforma:sender_id:fecha`, compartida entre ambos writes — por
-     eso `register_order` y `save_order` reciben la MISMA `fecha` desde `orchestrator.py`). Las
-     filas viejas sin `origen_key` (previas a este cambio) se **adoptan** por contenido, sin
-     duplicar (rama auto-dormante tras la 1ª corrida).
-  3. Si aun así falla, queda un log `ERROR` con la fila (ya no en silencio).
-
-  Requiere en la Supabase de Cava (correr una vez): `alter table pedidos add column if not
-  exists origen_key text; create unique index if not exists pedidos_origen_key_uidx on
-  pedidos(origen_key);`
-
-  Todo esto (`reconcile_from_sheets`, el job, `origen_key`, la adopción) es **puente de
-  migración**: se retira junto con la hoja `pedidos` de Sheets. Pendiente al tocar esta capa:
-  unificar la señal de error de `supabase.py` (`insert` devuelve bool; `upsert/update/delete`
-  no) y decidir si el reintento transitorio baja a `supabase.insert` para todos los callers.
+- **Pedidos en el panel (SOLO Supabase):** cuando la IA concreta una venta, el bot escribe la
+  tabla `pedidos` de Supabase (`app/whatsapp/orders_store.save_order`, llamado desde
+  `orchestrator.py`). **Ya NO se escribe la hoja de Sheets** — el puente de migración
+  (dual-write + `reconcile_from_sheets`) se retiró: Supabase es la única fuente de verdad, así
+  que borrar/editar un pedido en el panel es definitivo (antes la reconciliación desde Sheets lo
+  revivía). El panel tiene pantalla **Pedidos** (botón 📦 con badge de nuevos): `GET /api/orders`
+  lista, `POST /api/orders/estado` marca despachado/pendiente, `/api/orders/editar` y
+  `/api/orders/eliminar`.
+- **Total → columna `numeric`:** el LLM manda el total como texto (`"$41,000"`, `"41.000"`).
+  `orders_store._num_total` deja solo dígitos antes del insert; sin esto Postgres rechaza con
+  `22P02 invalid input syntax for type numeric`. Aplicado en `save_order`, `create_order` y
+  `update_order`.
+- **Confiabilidad (que ningún pedido se pierda):** el free tier duerme el servicio y un timeout
+  transitorio de Supabase por cold-start podía perder el insert. `orders_store.save_order`
+  **reintenta** con backoff (`_SAVE_RETRIES=3`); `supabase.insert` devuelve `bool` para saber si
+  aceptó. Si agota los reintentos, queda un log `ERROR` con la fila (ya sin red de Sheets).
+  `origen_key` (`plataforma:sender_id:fecha`) + índice único en `pedidos` evita duplicados si un
+  mismo evento se procesa dos veces. Pendiente: unificar la señal de error de `supabase.py`
+  (`insert` devuelve bool; `upsert/update/delete` no).
 - **Keep-alive:** free tier duerme el servicio a los ~15 min. Un pinger externo gratuito
   (cron-job.org / UptimeRobot) a `GET /healthz` cada ~10 min lo mantiene despierto. Render Cron
   Jobs es de pago; por eso el pinger externo.

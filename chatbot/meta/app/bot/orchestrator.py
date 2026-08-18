@@ -36,7 +36,7 @@ from app.llm.groq_client import chat
 from app.llm.prompts import build_system_prompt
 from app.messenger.client import get_profile_name, send_reaction, send_text, send_typing_on
 from app.messenger.parser import parse
-from app.sheets import activity, cache as sheets_cache, orders
+from app.sheets import activity, cache as sheets_cache
 from app.utils import bogota_time
 from app.whatsapp import orders_store
 
@@ -200,27 +200,10 @@ async def handle_event(messaging: dict, platform: str = "page") -> None:
     msg2 = parts[1] if len(parts) > 1 else ""
 
     # ── GUARDAR PEDIDO ───────────────────────────────────────────────────────
+    # Fuente única: Supabase (tabla `pedidos`). Ya NO se escribe la hoja de Sheets.
+    # save_order reintenta 3× con backoff; si aun así falla queda un ERROR con la fila.
     if es_pedido and pedido_datos:
-        # Una sola `fecha` compartida por ambos writes → misma origen_key, así la
-        # reconciliación Sheets→Supabase deduplica sin ambigüedad.
         fecha = bogota_time.format()
-        try:
-            await asyncio.to_thread(
-                orders.register_order,
-                psid,
-                pedido_datos["nombre"],
-                pedido_datos["telefono"],
-                pedido_datos["direccion"],
-                pedido_datos["pago"],
-                pedido_datos["pedido"],
-                pedido_datos["total"],
-                platform_name,
-                fecha,
-            )
-        except Exception as exc:
-            logger.error("Error guardando pedido: %s", exc)
-        # Write-through al panel (Supabase) — migración gradual Sheets → Supabase.
-        # Si falla (aun con reintentos), el job reconcile_from_sheets lo reintegra luego.
         try:
             await orders_store.save_order(
                 psid,

@@ -6,7 +6,6 @@ import mimetypes
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -19,7 +18,7 @@ from app.config import settings
 from app.panel import auth
 from app.panel.routes import router as panel_router
 from app.sheets.cache import refresh_cache
-from app.whatsapp import orders_store, store
+from app.whatsapp import store
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,15 +44,9 @@ mimetypes.add_type("application/manifest+json", ".webmanifest")
 async def _lifespan(app: FastAPI):
     await store.load_all()
     _scheduler.add_job(refresh_cache, "interval", hours=2, id="cache_updater")
-    # Red de seguridad: reintegra a Supabase pedidos que quedaron solo en Sheets
-    # (p. ej. si el write vivo falló por un cold-start). Idempotente.
-    # ⚠️ PUENTE DE MIGRACIÓN — quitar este job al retirar la hoja `pedidos` de Sheets.
-    _scheduler.add_job(
-        orders_store.reconcile_from_sheets, "interval", minutes=10, id="orders_reconcile",
-        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=30),
-    )
+    # Pedidos viven SOLO en Supabase. La reconciliación desde Sheets se retiró.
     _scheduler.start()
-    logger.info("APScheduler iniciado — cache cada 2 h, reconciliación de pedidos cada 10 min")
+    logger.info("APScheduler iniciado — cache cada 2 h")
     yield
     _scheduler.shutdown(wait=False)
 
