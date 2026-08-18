@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     # Groq
     groq_api_key: str
+    # Fuente única del modelo de chat. Cambiarlo aquí + commit (NO en Render env).
     groq_chat_model: str = "openai/gpt-oss-120b"
     groq_whisper_model: str = "whisper-large-v3"
 

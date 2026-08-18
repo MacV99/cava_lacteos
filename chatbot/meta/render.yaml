@@ -36,8 +36,8 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: GROQ_CHAT_MODEL
-        value: openai/gpt-oss-120b
+      # GROQ_CHAT_MODEL: NO se declara aquí a propósito. El modelo vive solo en
+      # app/config.py (groq_chat_model) para cambiarlo con 1 commit sin tocar Render.
       - key: GROQ_WHISPER_MODEL
         value: whisper-large-v3
       - key: GOOGLE_SHEETS_ID
