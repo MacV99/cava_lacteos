@@ -43,8 +43,11 @@ WhatsApp NO reimplementa la lógica: es un tercer canal junto a Messenger e Inst
   (`app/panel/routes.py`) — conversaciones, envío manual, media, bloqueo, renombrar. Login por
   cookie firmada (`app/panel/auth.py`, `PANEL_PASSWORD`).
 - **Toggle IA por chat:** columna `ai_on` (default true) en la tabla `conversations` de Supabase;
-  el panel la cambia con `POST /api/ai-toggle`. Off → WhatsApp 100% manual. v1 IA = **solo texto**
-  (media entra al panel pero no se manda al LLM; notas de voz salientes: sin ffmpeg, pendiente).
+  el panel la cambia con `POST /api/ai-toggle`. Off → WhatsApp 100% manual. La IA procesa
+  **texto y notas de voz entrantes** (se transcriben con Whisper igual que Messenger:
+  `handler._transcribe_and_handle` → `graph.get_media_url`/`download_media` → `transcribe_bytes`).
+  Otra media (imagen/video/doc) entra al panel pero no va al LLM; notas de voz **salientes** del
+  bot siguen pendientes (sin ffmpeg).
 - **Persistencia del panel:** conversaciones en **Supabase** (`app/whatsapp/store.py`, vía
   PostgREST con httpx; sin `SUPABASE_URL` cae a JSON local). El cerebro sigue guardando su estado
   de WhatsApp en Sheets (`actividad`, `canal='whatsapp'`) — dos almacenes distintos por ahora.
