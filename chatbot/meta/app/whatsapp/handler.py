@@ -6,7 +6,8 @@ guardaba el entrante y hacía POST HTTP al bot Python; ahora todo pasa en proces
   2. si la IA está encendida para ese chat, corre el MISMO orchestrator (handle_event)
      con platform="whatsapp" — igual que Messenger/IG.
 
-v1 = solo texto para la IA (media entra al panel pero no se manda al LLM).
+La IA procesa texto y notas de voz (transcritas con Whisper, igual que Messenger).
+Otra media (imagen/video/documento) entra al panel pero no se manda al LLM.
 """
 import logging
 import time
@@ -53,6 +54,30 @@ def _extract_message(m: dict) -> dict:
         return {**base, "mediaId": media.get("id"), "mime": media.get("mime_type"),
                 "filename": media.get("filename"), "text": media.get("caption", "")}
     return {**base, "type": "text", "text": f"[mensaje tipo {t} no soportado]"}
+
+
+async def _transcribe_and_handle(wa_id: str, media_id: str, mid: str) -> None:
+    """Baja la nota de voz de WhatsApp (Graph), la transcribe (Whisper) y corre el cerebro.
+
+    WhatsApp no da URL pública: hay que resolver media_id → url temporal y bajar el binario
+    con el token (a diferencia de Messenger, que sí trae URL pública).
+    """
+    from app.audio.transcribe import transcribe_bytes
+    from app.bot.orchestrator import handle_event
+    from app.whatsapp import graph
+    try:
+        info = await graph.get_media_url(media_id)
+        audio_bytes, ctype = await graph.download_media(info["url"])
+        text = (await transcribe_bytes(audio_bytes, info.get("mime_type") or ctype)).strip()
+    except Exception as exc:
+        logger.error("WA audio: no se pudo transcribir media=%s: %s", media_id, exc)
+        return
+    if not text:
+        logger.info("WA audio: transcripción vacía media=%s", media_id)
+        return
+    logger.info("WA audio transcrito (%s): %s", wa_id, text)
+    messaging = {"sender": {"id": wa_id}, "message": {"text": text, "mid": mid}}
+    await handle_event(messaging, "whatsapp")
 
 
 def _dedup(mid: str) -> bool:
@@ -103,9 +128,22 @@ async def handle_webhook_body(body: dict, background_tasks) -> None:
                     conv = await store.add_inbound(wa_id, name, msg)
                     logger.info("[in] %s (%s): %s", name, wa_id, msg.get("text") or msg.get("type"))
 
-                    # Si la IA está encendida para este chat, corre el mismo cerebro.
+                    # IA apagada para este chat → 100% manual, no procesar.
+                    if conv.get("aiOn") is False:
+                        continue
+
+                    # Nota de voz → transcribir con Whisper y correr el mismo cerebro.
+                    if msg.get("type") in ("audio", "voice") and msg.get("mediaId"):
+                        if _dedup(msg.get("id")):
+                            logger.info("WA duplicado ignorado mid=%s", msg.get("id"))
+                            continue
+                        background_tasks.add_task(
+                            _transcribe_and_handle, wa_id, msg["mediaId"], msg.get("id"))
+                        continue
+
+                    # Texto (u otros mapeados a texto: botón/interactivo/ubicación).
                     text = (msg.get("text") or "").strip()
-                    if conv.get("aiOn") is False or not text:
+                    if not text:
                         continue
                     if _dedup(msg.get("id")):
                         logger.info("WA duplicado ignorado mid=%s", msg.get("id"))
