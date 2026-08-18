@@ -29,6 +29,16 @@ CAMPOS_EDITABLES = {"nombre", "telefono", "direccion", "pago", "pedido", "total"
 _SAVE_RETRIES = 3
 
 
+def _num_total(total) -> str | None:
+    """Normaliza el total a algo que la columna `numeric` acepte.
+
+    El LLM/panel manda cosas como "$41,000", "41.000", "$ 41000 COP". La columna es
+    numeric → hay que dejar solo dígitos (COP no usa decimales). '' / sin dígitos → None (null).
+    """
+    dig = "".join(ch for ch in str(total or "") if ch.isdigit())
+    return dig or None
+
+
 def origen_key(plataforma: str, sender_id: str, fecha: str) -> str:
     """Llave natural de un pedido (idempotencia entre Sheets y Supabase).
 
@@ -59,7 +69,7 @@ async def save_order(
     row = {
         "sender_id": sender_id, "nombre": nombre, "telefono": telefono,
         "direccion": direccion, "pago": pago, "pedido": pedido,
-        "total": total, "plataforma": plataforma, "estado": "pendiente",
+        "total": _num_total(total), "plataforma": plataforma, "estado": "pendiente",
     }
     if key:
         row["origen_key"] = key
@@ -84,7 +94,7 @@ async def create_order(data: dict) -> bool:
     """
     if not sb.enabled:
         return False
-    total = (str(data.get("total") or "").strip()) or None  # columna numérica: '' → null
+    total = _num_total(data.get("total"))  # columna numérica: '' → null
     row = {
         "sender_id": "",  # pedido manual: no hay chat de origen
         "nombre": (data.get("nombre") or "").strip(),
@@ -205,6 +215,8 @@ async def update_order(order_id, patch: dict) -> bool:
     Filtra a CAMPOS_EDITABLES para no dejar tocar id/estado/plataforma/origen_key.
     """
     clean = {k: v for k, v in (patch or {}).items() if k in CAMPOS_EDITABLES}
+    if "total" in clean:
+        clean["total"] = _num_total(clean["total"])  # columna numeric: no aceptar "$41,000"
     if not sb.enabled or not clean:
         return False
     return await sb.update("pedidos", clean, {"id": order_id})

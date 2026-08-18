@@ -37,7 +37,7 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_CHAT_MODEL
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
       - key: GROQ_WHISPER_MODEL
         value: whisper-large-v3
       - key: GOOGLE_SHEETS_ID

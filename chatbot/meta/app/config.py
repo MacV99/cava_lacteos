@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # Groq
     groq_api_key: str
-    groq_chat_model: str = "llama-3.3-70b-versatile"
+    groq_chat_model: str = "openai/gpt-oss-120b"
     groq_whisper_model: str = "whisper-large-v3"
 
     # ── WhatsApp Cloud API (canal oficial) ────────────────────────────────────
