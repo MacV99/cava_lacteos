@@ -236,9 +236,13 @@ body {
 .bubble {
   position: relative; max-width: 76%; padding: .55rem .8rem .35rem; border-radius: 14px;
   font-size: .9rem; line-height: 1.4; word-break: break-word;
-  animation: rowIn .3s ease both; box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm);
 }
 @keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* rowIn solo en elementos NUEVOS (marcados en JS): al reconstruir el innerHTML
+   completo, sin esto TODAS las burbujas/cards re-animaban = titileo. */
+.bubble--in { animation: rowIn .3s ease both; }
+.order-card--in { animation: rowIn .28s ease both; }
 /* En hover la burbuja sube de capa para que su reacción (cuelga abajo) y su barra de
    acciones (cuelga arriba) no las tape la burbuja vecina, que se pinta después. */
 .bubble:hover { z-index: 5; }
@@ -414,7 +418,7 @@ body {
 }
 .order-card {
   background: var(--c0); border: 1px solid var(--c200); border-radius: var(--radius);
-  box-shadow: var(--shadow-sm); padding: .85rem .95rem; animation: rowIn .28s ease both;
+  box-shadow: var(--shadow-sm); padding: .85rem .95rem;
 }
 .order-card--despachado { opacity: .72; }
 .order-card--cancelado { opacity: .6; }

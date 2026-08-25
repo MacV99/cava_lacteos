@@ -44,7 +44,8 @@ let channelFilter = 'todos';
 let errorMap = { map: {}, fallback: null };
 let chHealth = { whatsapp: null };   // salud real de WhatsApp Cloud (backend)
 let srvOk = false, metaOk = false;   // server Node alcanzable / Apps Script respondiendo
-let listSig = '', threadSig = '';
+let listSig = '', threadSig = '', ordersSig = '';
+let threadKeyRendered = '', threadMsgKeys = new Set();   // rowIn solo en burbujas nuevas
 let replyTarget = null;   // { id, text } al que se responde
 let pendingFile = null;   // File adjunto pendiente de enviar
 let mediaRec = null, recChunks = [];   // grabación de audio
@@ -402,8 +403,15 @@ function renderThread() {
   for (const m of c.messages) if (m.id) byMsgId[m.id] = m;
 
   const conv = $('conversation');
-  let html = ''; let lastDay = '';
+  // rowIn solo en burbujas nuevas: al cambiar de chat animan todas; en el mismo
+  // chat, solo el mensaje recién llegado. Evita el flash de todo el hilo cada poll.
+  const freshChat = activeKey !== threadKeyRendered;
+  const nextKeys = new Set();
+  let html = ''; let lastDay = ''; let mi = 0;
   for (const m of c.messages) {
+    const mk = m.id || `${m.dir}:${m.ts || ''}:${mi++}`;
+    nextKeys.add(mk);
+    const isNew = freshChat || !threadMsgKeys.has(mk);
     if (isWA && m.ts) {
       const dk = dayKey(m.ts);
       if (dk !== lastDay) { html += `<div class="date-sep"><span>${dayLabel(m.ts)}</span></div>`; lastDay = dk; }
@@ -417,10 +425,12 @@ function renderThread() {
         <button class="bubble__act" data-act="reply" data-id="${esc(m.id)}" title="Responder">↩</button>
         <button class="bubble__act" data-act="del" data-id="${esc(m.id)}" title="Eliminar del panel">🗑</button>
       </div>` : '';
-    html += `<div class="bubble bubble--${m.dir === 'out' ? 'out' : 'in'}">
+    html += `<div class="bubble bubble--${m.dir === 'out' ? 'out' : 'in'}${isNew ? ' bubble--in' : ''}">
       ${acts}${quote}${mediaHtml(m)}${text}${foot}${reaction}
     </div>`;
   }
+  threadMsgKeys = nextKeys;
+  threadKeyRendered = activeKey;
   conv.innerHTML = html || '<div class="empty">Sin mensajes todavía.</div>';
   if (wasNearBottom) conv.scrollTop = conv.scrollHeight;
 
@@ -744,9 +754,19 @@ function setSection(name) {
   if (name === 'orders') { if (ordersLoaded) renderOrders(); else pollOrders(); }
 }
 
+let renderedOrderIds = new Set();   // ids ya pintados → rowIn solo en pedidos nuevos
+function ordersSignature(rows) {
+  return ordersFilter + '::' + orders.length + '::' + rows.map((o) =>
+    `${o.id}:${o.estado}:${o.total}:${o.telefono}:${o.direccion}:${o.pago}:${o.pedido}:${o.nombre}`).join('|');
+}
+
 function renderOrders() {
-  $('orders-loading').classList.add('hidden');
   const rows = ordersFilter === 'todos' ? orders : orders.filter((o) => o.estado === ordersFilter);
+  const sig = ordersSignature(rows);
+  if (sig === ordersSig) return;   // nada cambió → no reconstruir (evita re-disparar rowIn = titileo)
+  ordersSig = sig;
+
+  $('orders-loading').classList.add('hidden');
   $('orders-count').textContent = orders.length ? `${orders.length}` : '';
   const box = $('orders-list'), empty = $('orders-empty');
   if (!rows.length) {
@@ -758,12 +778,14 @@ function renderOrders() {
     return;
   }
   empty.classList.add('hidden');
-  box.innerHTML = rows.map(orderCardHTML).join('');
+  const seen = renderedOrderIds;
+  box.innerHTML = rows.map((o) => orderCardHTML(o, !seen.has(o.id))).join('');
+  renderedOrderIds = new Set(rows.map((o) => o.id));
   box.querySelectorAll('.oaction').forEach((el) => el.addEventListener('click', () => setOrderEstado(el.dataset.id, el.dataset.estado)));
   box.querySelectorAll('.oedit').forEach((el) => el.addEventListener('click', () => openOrderModal(el.dataset.id)));
 }
 
-function orderCardHTML(o) {
+function orderCardHTML(o, isNew) {
   const ch = orderChannel(o.plataforma);
   const tel = String(o.telefono || '').replace(/\s+/g, '');
   const row = (ico, val) => `<div class="mrow"><span class="mrow__ico" aria-hidden="true">${ico}</span><span class="mrow__val">${val}</span></div>`;
@@ -774,7 +796,7 @@ function orderCardHTML(o) {
     ? `<button class="oaction oaction--ok" data-id="${esc(o.id)}" data-estado="despachado">✓ Despachar</button>`
     : `<button class="oaction" data-id="${esc(o.id)}" data-estado="pendiente">↩ Reabrir</button>`;
   const acciones = `<button class="oedit" data-id="${esc(o.id)}" title="Editar" aria-label="Editar">✎</button>${toggle}`;
-  return `<div class="order-card order-card--${o.estado}">
+  return `<div class="order-card order-card--${o.estado}${isNew ? ' order-card--in' : ''}">
     <div class="order-card__head">
       <span class="canal-badge canal-badge--${ch}" aria-hidden="true">${canalIcon(ch)}</span>
       <div class="order-card__who">
